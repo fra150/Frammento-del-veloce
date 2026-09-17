@@ -1,4 +1,4 @@
-"""Entry-point unificato: python -m src <2d|1d|demo|all> [opzioni]."""
+"""Entry-point unificato: python -m src <2d|1d|demo|sweep|ablazione|all>."""
 
 from __future__ import annotations
 
@@ -40,6 +40,22 @@ def cmd_demo(args):
     demo_main()
 
 
+def cmd_sweep(args):
+    from .studi import main_sweep
+    import os
+    out = args.out or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+    main_sweep(N=args.N, T=args.T, out_dir=out, seed=args.seed)
+
+
+def cmd_ablazione(args):
+    from .studi import main_ablazione
+    import os
+    out = args.out or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+    main_ablazione(N=args.N, T=args.T, out_dir=out, seed=args.seed)
+
+
 def build_parser():
     ap = argparse.ArgumentParser(description="Frammento del veloce - runner unificato")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -65,6 +81,20 @@ def build_parser():
 
     ad = sub.add_parser("demo", help="7 figure dimostrative 2D in output/")
     ad.set_defaults(func=cmd_demo)
+
+    aS = sub.add_parser("sweep", help="studio di robustezza al variare dei parametri")
+    aS.add_argument("--N", type=int, default=48)
+    aS.add_argument("--T", type=float, default=0.15)
+    aS.add_argument("--seed", type=int, default=7)
+    aS.add_argument("--out", type=str, default="")
+    aS.set_defaults(func=cmd_sweep)
+
+    aB = sub.add_parser("ablazione", help="confronto con baseline di controllo")
+    aB.add_argument("--N", type=int, default=48)
+    aB.add_argument("--T", type=float, default=0.15)
+    aB.add_argument("--seed", type=int, default=7)
+    aB.add_argument("--out", type=str, default="")
+    aB.set_defaults(func=cmd_ablazione)
 
     aA = sub.add_parser("all", help="2d + 1d + demo in sequenza")
     aA.add_argument("--N", type=int, default=96)

@@ -59,6 +59,18 @@ def test_demo_main(tmp_path, monkeypatch):
         assert os.path.getsize(path) > 0, nome
 
 
+def test_main_sweep_e_ablazione(tmp_path):
+    import os
+    from src.studi import main_ablazione, main_sweep
+    out = str(tmp_path)
+    rs = main_sweep(N=16, T=0.2, out_dir=out, seed=7)
+    ra = main_ablazione(N=16, T=0.2, out_dir=out, seed=7)
+    assert len(rs) == 7 and len(ra) == 6
+    for nome in ("studio_parametri.csv", "studio_parametri.md",
+                 "ablazione.csv", "ablazione.md", "fig08_ablazione.png"):
+        assert os.path.isfile(os.path.join(out, nome)), nome
+
+
 def test_modello_1d_completo(tmp_path):
     p = Params(T=2.0, N=256, seed=0)
     sim = FrammentoDelVeloce(p)

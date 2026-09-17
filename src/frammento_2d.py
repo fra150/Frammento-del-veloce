@@ -106,6 +106,7 @@ def simula(
     protocollo: str = "stimolo",       # 'stimolo' | 'rilassamento'
     salva_ogni: int = 50,
     rumore_bianco: bool = True,
+    stato_iniziale: dict | None = None,  # {'F0':..., 'Fx':..., 'Fy':...}
 ) -> dict:
     """Integra il sistema accoppiato F0 (g0), Fx (gx), Fy (gy).
 
@@ -114,6 +115,10 @@ def simula(
         dFx/dt = Dx lap(Fx) + alpha (Fin - Fx) + kx (F0 - Fx)
         dFy/dt = Dy lap(Fy) + beta Fy (1 - Fy/K) G + gamma G xi - ky Fy
     con G = gate di compatibilita' (gx attivo e supporto di g0 non nullo).
+
+    Se `stato_iniziale` e' fornito (chiavi 'F0', 'Fx', 'Fy'), la simulazione
+    riparte da quello stato invece che dall'essenza: serve per esperimenti
+    di perturbazione/recupero (twin experiment).
     """
     dt = dt or p.dt_stabile()
     rng = np.random.default_rng(p.seed)
@@ -123,6 +128,13 @@ def simula(
     Fx = essenza(p).copy()              # operativita' allineata all'ingresso
     mask = (essenza(p) > 1e-3).astype(float)   # vincolo strutturale di g0
     Fy = 0.05 * mask * rng.random((p.N, p.N))  # germe di novita'
+    if stato_iniziale:
+        if "F0" in stato_iniziale:
+            F0 = np.asarray(stato_iniziale["F0"], dtype=float).copy()
+        if "Fx" in stato_iniziale:
+            Fx = np.asarray(stato_iniziale["Fx"], dtype=float).copy()
+        if "Fy" in stato_iniziale:
+            Fy = np.asarray(stato_iniziale["Fy"], dtype=float).copy()
 
     passo_rumore = np.sqrt(dt)
     nsteps = int(T / dt)
@@ -190,7 +202,10 @@ def lyapunov(F0, Fx, Fy, F_essenza, w=(0.5, 0.3, 0.2)):
     """Candidato di Lyapunov: distanza pesata dall'attrattore dei tre livelli.
 
     V = w0 ||F0 - F0*||^2 + wx ||Fx - F0||^2 + wy ||Fy||^2
-    con F0* = misura invariante di g0 (equilibrio di massima omogeneita').
+    con F0* = equilibrio omogeneo della diffusione pura di g0 (non, in
+    generale, un equilibrio dell'intero sistema accoppiato: la verifica
+    dV/dt <= 0 e' quindi numerica, sulle traiettorie simulate, e non una
+    dimostrazione di stabilita' globale del modello matematico).
     """
     dx = 1.0 / np.sqrt(F0.size)
     F0_star = np.full_like(F0, F0.mean())
@@ -236,13 +251,14 @@ def esperimento_diffusione(p: Param, D: float, T: float = 0.06,
 
 
 def invariante_nv(p: Param, D: float, T: float = 0.06) -> dict:
-    """Verifica numerica di n = v.
+    """Verifica numerica dell'invarianza in forma normalizzata.
 
     n  = massa totale del Frammento (numero di elementi)
     v  = velocita' di diffusione misurata da <r^2> = 4 D t
     v_tilde = v / D_g0 : velocita' adimensionale nella scala fissata da g0.
-    L'invarianza n = v vale nella metrica normalizzata da g0 (D_g0 fissato);
-    la forma cruda richiede la costante di scala, come discusso nella ricerca.
+    La forma 'n = v' e' un principio qualitativo di bilanciamento (n e v hanno
+    dimensioni diverse); nelle simulazioni si usa la forma normalizzata
+    v_tilde = v / D_g0, con costante di scala lambda_g fissata da g0.
     """
     e = esperimento_diffusione(p, D, T)
     n = 1.0                       # massa iniziale normalizzata del Frammento
