@@ -1,0 +1,7 @@
+services:
+  frammento:
+    build: .
+    image: frammento-del-veloce:latest
+    volumes:
+      - ./output:/app/output
+    command: ["all"]

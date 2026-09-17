@@ -1,0 +1,10 @@
+# File esclusi dal push (documentazione locale non versionata)
+latex/
+Frammento_del_veloce_IT.pdf
+frammetoveloce.md
+
+# Bytecode e cache Python (generati in automatico)
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
