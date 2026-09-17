@@ -505,6 +505,7 @@ novita' cresce (+4%: il vincolo trattiene); γ=0.25 crolla la fedelta'
 
 - `frammetoveloce.md` — formalizzazione matematica completa (modello, equazioni, discussione, conclusioni).
 - `Frammento_del_veloce_IT.pdf` — preprint in italiano.
+  DOI: [10.5281/zenodo.22812892](https://doi.org/10.5281/zenodo.22812892).
 - Tracce mnestiche citate: `zenodo.org/records/14534720`, `zenodo.org/records/17069503`.
 
 ---
@@ -514,8 +515,7 @@ novita' cresce (+4%: il vincolo trattiene); γ=0.25 crolla la fedelta'
 Licenza MIT (vedi `LICENSE`). Uso didattico / scientifico: citare l'autore
 del modello (dr. Bulla Francesco) in derivazioni e pubblicazioni.
 
-- `CITATION.cff`: metadati di citazione (compilare il DOI dopo la release
-  versionata su Zenodo: collega il repo GitHub a Zenodo, crea una release,
-  incolla il DOI nel `CITATION.cff` e nel README).
+- `CITATION.cff`: metadati di citazione (DOI preprint:
+  [10.5281/zenodo.22812892](https://doi.org/10.5281/zenodo.22812892)).
 - Tracce mnestiche citate: `zenodo.org/records/14534720`,
   `zenodo.org/records/17069503`.
