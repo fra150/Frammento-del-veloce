@@ -2,9 +2,13 @@
 
 import os
 
-from src.frammento_2d import Param, simula
+import numpy as np
+
+from src.frammento_2d import Param, simula, verifica_invarianza
 from src.studi import (
     COLONNE_SWEEP,
+    SEEDS_DEFAULT,
+    _adattamento,
     config_ablazione,
     config_sweep,
     esegui,
@@ -13,6 +17,7 @@ from src.studi import (
     tabella_md,
     tempo_recupero,
     valuta,
+    valuta_multiseed,
 )
 
 
@@ -89,3 +94,48 @@ def test_configurazioni_complete():
     for cfg in config_sweep() + config_ablazione():
         Param(**cfg["param"])  # parametri validi
         assert cfg["nome"]
+
+
+def test_lambda_g_costante_tra_livelli():
+    # invarianza geometrica: lambda_g quasi costante su 25x di D
+    # (serve finestra lunga: campionamento ogni 40 step)
+    p = _mini_param(N=64)
+    ver = verifica_invarianza(p, T=0.06)
+    assert ver["cv"] < 0.15, ver
+    assert 0.5 < ver["media"] < 2.5, ver
+
+
+def test_adattamento_nondegenere_cresce_con_alpha():
+    p0 = _mini_param(alpha=0.0, kappa_x=0.0)
+    p1 = _mini_param(alpha=3.0)
+    p2 = _mini_param(alpha=8.0)
+    s0 = simula(p0, T=0.03, salva_ogni=2)
+    s1 = simula(p1, T=0.03, salva_ogni=2)
+    s2 = simula(p2, T=0.03, salva_ogni=2)
+    a0 = _adattamento(p0, s0)
+    a1 = _adattamento(p1, s1)
+    a2 = _adattamento(p2, s2)
+    assert not np.allclose([a0, a1, a2], -0.04, atol=0.01)
+    assert a0 < a1 < a2, (a0, a1, a2)
+
+
+def test_multiseed_media_std_due_seed():
+    p = _mini_param()
+    r = valuta_multiseed(p, seeds=(7, 11), T=0.02, salva_ogni=1)
+    assert r["n_seed"] == 2
+    assert 0.0 <= r["fedelta_mean"] <= 1.0
+    assert r["fedelta_std"] >= 0.0
+    assert 0.0 <= r["recuperato_frac"] <= 1.0
+
+
+def test_main_multiseed_mini_scrive_file(tmp_path):
+    from src.studi import main_ablazione_multiseed, main_sweep_multiseed
+    out = str(tmp_path)
+    rs = main_sweep_multiseed(N=16, T=0.2, out_dir=out, seeds=(7, 11))
+    ra = main_ablazione_multiseed(N=16, T=0.2, out_dir=out, seeds=(7, 11))
+    assert len(rs) == 7 and len(ra) == 6
+    for nome in ("studio_parametri_multiseed.csv",
+                 "studio_parametri_multiseed.md",
+                 "ablazione_multiseed.csv", "ablazione_multiseed.md",
+                 "fig08_ablazione.png"):
+        assert os.path.isfile(os.path.join(out, nome)), nome

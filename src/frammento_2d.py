@@ -110,11 +110,13 @@ def simula(
 ) -> dict:
     """Integra il sistema accoppiato F0 (g0), Fx (gx), Fy (gy).
 
-    equazioni:
-        dF0/dt = D0 lap(F0)                                   (R_g0 = 0)
-        dFx/dt = Dx lap(Fx) + alpha (Fin - Fx) + kx (F0 - Fx)
-        dFy/dt = Dy lap(Fy) + beta Fy (1 - Fy/K) G + gamma G xi - ky Fy
-    con G = gate di compatibilita' (gx attivo e supporto di g0 non nullo).
+    equazioni (SDE in forma di Ito'):
+        dF0 = D0 lap(F0) dt                                   (R_g0 = 0)
+        dFx = [Dx lap(Fx) + alpha (Fin - Fx) + kx (F0 - Fx)] dt
+        dFy = [Dy lap(Fy) + beta Fy (1 - Fy/K) G - ky Fy] dt + gamma G dW
+    con G = gate di compatibilita' (gx attivo e supporto di g0 non nullo),
+    dW = xi*sqrt(dt), xi = N(0,1) bianco oppure OU a varianza unitaria.
+    Schema: Eulero-Maruyama (deterministico = Eulero esplicito).
 
     Se `stato_iniziale` e' fornito (chiavi 'F0', 'Fx', 'Fy'), la simulazione
     riparte da quello stato invece che dall'essenza: serve per esperimenti
@@ -123,6 +125,8 @@ def simula(
     dt = dt or p.dt_stabile()
     rng = np.random.default_rng(p.seed)
     dx = p.dx
+    sqrt_dt = float(np.sqrt(dt))
+    tau_ou = 0.05  # costante di tempo OU (stessa di prima, ora a varianza unitaria)
 
     F0 = essenza(p).copy()              # essenza g0, 100% qualita'
     Fx = essenza(p).copy()              # operativita' allineata all'ingresso
@@ -136,10 +140,10 @@ def simula(
         if "Fy" in stato_iniziale:
             Fy = np.asarray(stato_iniziale["Fy"], dtype=float).copy()
 
-    passo_rumore = np.sqrt(dt)
     nsteps = int(T / dt)
 
     # stato OU locale (evita variabile statica su funzione in caso di N diversi)
+    # normalizzato a varianza stazionaria unitaria: Var[ou] -> 1
     ou = np.zeros((p.N, p.N))
 
     snap = {"t": [], "F0": [], "Fx": [], "Fy": []}
@@ -158,20 +162,29 @@ def simula(
 
         R_x = p.alpha * (Fin - Fx) + p.kappa_x * (F0 - Fx)
         R_y_reattivo = p.beta * Fy * (1.0 - Fy / p.K) * gate - p.kappa_y * Fy
+        # Rumore Euler-Maruyama: incremento Wiener ~ sqrt(dt), NON O(dt).
+        # Prima il termine entrava come dt*gamma*G*xi (O(dt), invisibile);
+        # ora entra come sqrt(dt)*gamma*G*xi come da teoria SDE.
+        dW_y = None
         if stocastico:
             if rumore_bianco:
                 xi = rng.standard_normal((p.N, p.N))
-            else:  # rumore colorato (Ornstein-Uhlenbeck), piu' realistico
-                ou += (-ou * dt + rng.standard_normal((p.N, p.N)) * passo_rumore) / 0.05
+            else:  # OU a varianza unitaria: d(ou) = -ou/tau dt + sqrt(2/tau) dW
+                ou += (-ou * dt / tau_ou
+                       + np.sqrt(2.0 * dt / tau_ou)
+                       * rng.standard_normal((p.N, p.N)))
                 xi = ou
-            R_y = R_y_reattivo + p.gamma * gate * xi
-        else:
-            R_y = R_y_reattivo
+            dW_y = sqrt_dt * p.gamma * gate * xi
 
         if k < nsteps:
             F0 = F0 + dt * p.D0 * laplaciano(F0, dx)
             Fx = Fx + dt * (p.Dx * laplaciano(Fx, dx) + R_x)
-            Fy = Fy + dt * (p.Dy * laplaciano(Fy, dx) + R_y)
+            Fy = Fy + dt * (p.Dy * laplaciano(Fy, dx) + R_y_reattivo)
+            if dW_y is not None:
+                Fy = Fy + dW_y
+            # densita' non negativa (come nel 1D): rettifica il rumore,
+            # cosi' gamma aumenta davvero la novita' media
+            np.maximum(Fy, 0.0, out=Fy)
 
         if k % salva_ogni == 0:
             snap["t"].append(t)
@@ -254,17 +267,46 @@ def invariante_nv(p: Param, D: float, T: float = 0.06) -> dict:
     """Verifica numerica dell'invarianza in forma normalizzata.
 
     n  = massa totale del Frammento (numero di elementi)
-    v  = velocita' di diffusione misurata da <r^2> = 4 D t
+    v  = velocita' di diffusione misurata da ``<r^2> = 4 D t``
     v_tilde = v / D_g0 : velocita' adimensionale nella scala fissata da g0.
+
     La forma 'n = v' e' un principio qualitativo di bilanciamento (n e v hanno
-    dimensioni diverse); nelle simulazioni si usa la forma normalizzata
-    v_tilde = v / D_g0, con costante di scala lambda_g fissata da g0.
+    dimensioni diverse). La grandezza indipendente dalla geometria e':
+
+        lambda_g = D_vero / v   (efficienza numerica inversa)
+        eta_g    = v / D_vero = 1/lambda_g
+
+    Se lo schema numerico preserva lo scaling diffusivo, lambda_g e' costante
+    al variare di D (livelli g0/gx/gy): v_tilde scala linearmente con D/D0.
+    La vecchia forma n = lambda*v_tilde con lambda=1/v_tilde per livello e'
+    tautologica e NON va usata come prova di invarianza.
     """
     e = esperimento_diffusione(p, D, T)
     n = 1.0                       # massa iniziale normalizzata del Frammento
     v = e["r2_medio_t"] / 4.0     # coefficiente di diffusione efficace misurato
     v_tilde = v / p.D0            # scala adimensionale fissata da g0
-    return {"n": n, "v": v, "v_tilde": v_tilde, "D_vero": D, "D_stimato": e["D_stimato"]}
+    lambda_g = float(D / max(v, EPS))
+    eta_g = float(v / max(D, EPS))
+    return {"n": n, "v": v, "v_tilde": v_tilde, "D_vero": D,
+            "D_stimato": e["D_stimato"], "lambda_g": lambda_g, "eta_g": eta_g}
+
+
+def verifica_invarianza(p: Param, T: float = 0.06) -> dict:
+    """Costanza di lambda_g sui tre livelli (prova di invarianza geometrica).
+
+    Ritorna lambda per g0/gx/gy, media, std e CV. Invarianza = CV piccolo
+    a fronte di D che varia di >10x.
+    """
+    Ds = {"g0": p.D0, "gx": p.Dx, "gy": p.Dy}
+    lam = {}
+    for nome, D in Ds.items():
+        lam[nome] = invariante_nv(p, D, T)["lambda_g"]
+    vals = np.array([lam["g0"], lam["gx"], lam["gy"]], dtype=float)
+    media = float(vals.mean())
+    std = float(vals.std(ddof=0))
+    return {"lambda": lam, "media": media, "std": std,
+            "cv": float(std / max(media, EPS)),
+            "d_min": min(Ds.values()), "d_max": max(Ds.values())}
 
 
 # ----------------------------------------------------------------------------

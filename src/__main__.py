@@ -7,7 +7,8 @@ import sys
 
 
 def cmd_2d(args):
-    from .frammento_2d import Param, simula, riepilogo, invariante_nv
+    from .frammento_2d import (Param, simula, riepilogo, invariante_nv,
+                               verifica_invarianza)
 
     p = Param(N=args.N, seed=args.seed)
     snap = simula(p, T=args.T, protocollo=args.protocollo)
@@ -16,7 +17,13 @@ def cmd_2d(args):
         inv = invariante_nv(p, D)
         print(f"{nome:>2}: n = {inv['n']:.4f}  v = {inv['v']:.6f} "
               f" v~ = {inv['v_tilde']:.4f}  D_stimato = {inv['D_stimato']:.6f}"
-              f" (vero {D:.6f})")
+              f" (vero {D:.6f})  lambda_g = {inv['lambda_g']:.4f}")
+    ver = verifica_invarianza(p)
+    lam = ver["lambda"]
+    print(f"invarianza: lambda_g g0/gx/gy = {lam['g0']:.3f} / "
+          f"{lam['gx']:.3f} / {lam['gy']:.3f}  media = {ver['media']:.3f} ± "
+          f"{ver['std']:.3f} (CV = {ver['cv'] * 100:.1f}%, "
+          f"D in [{ver['d_min']:.4f}, {ver['d_max']:.4f}])")
 
 
 def cmd_1d(args):
@@ -45,7 +52,8 @@ def cmd_sweep(args):
     import os
     out = args.out or os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
-    main_sweep(N=args.N, T=args.T, out_dir=out, seed=args.seed)
+    seeds = tuple(args.seeds) if getattr(args, "seeds", None) else None
+    main_sweep(N=args.N, T=args.T, out_dir=out, seed=args.seed, seeds=seeds)
 
 
 def cmd_ablazione(args):
@@ -53,7 +61,9 @@ def cmd_ablazione(args):
     import os
     out = args.out or os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
-    main_ablazione(N=args.N, T=args.T, out_dir=out, seed=args.seed)
+    seeds = tuple(args.seeds) if getattr(args, "seeds", None) else None
+    main_ablazione(N=args.N, T=args.T, out_dir=out, seed=args.seed,
+                   seeds=seeds)
 
 
 def build_parser():
@@ -86,6 +96,9 @@ def build_parser():
     aS.add_argument("--N", type=int, default=48)
     aS.add_argument("--T", type=float, default=0.15)
     aS.add_argument("--seed", type=int, default=7)
+    aS.add_argument("--seeds", type=int, nargs="*", default=None,
+                    help="se multipli, sweep multi-seed con media±std "
+                         "(es. --seeds 7 11 13 21 33)")
     aS.add_argument("--out", type=str, default="")
     aS.set_defaults(func=cmd_sweep)
 
@@ -93,6 +106,8 @@ def build_parser():
     aB.add_argument("--N", type=int, default=48)
     aB.add_argument("--T", type=float, default=0.15)
     aB.add_argument("--seed", type=int, default=7)
+    aB.add_argument("--seeds", type=int, nargs="*", default=None,
+                    help="se multipli, ablazione multi-seed con media±std")
     aB.add_argument("--out", type=str, default="")
     aB.set_defaults(func=cmd_ablazione)
 

@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "Frammento del Veloce — diffusione dinamica della memoria (modello computazionale)"
+message: "Se usi questo software, per favore citalo come segue."
+type: software
+authors:
+  - family-names: Bulla
+    given-names: Francesco
+    affiliation: Catania
+repository-code: "https://github.com/fra150/Frammento-del-veloce"
+license: MIT
+version: 1.1.0
+date-released: 2026-09-17
+keywords:
+  - reaction-diffusion
+  - memory-model
+  - euler-maruyama
+  - lyapunov
+  - turing-pattern
+# DOI Zenodo (da compilare dopo la release versionata su Zenodo):
+# doi: 10.5281/zenodo.XXXXXXX

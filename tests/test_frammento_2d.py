@@ -146,3 +146,30 @@ def test_riepilogo_contiene_chiavi():
     txt = riepilogo(snap)
     for chiave in ("massa g0", "novita'", "Lyapunov", "dV/dt"):
         assert chiave in txt
+
+
+def test_rumore_scaling_sqrt_dt_riduce_fedelta():
+    # con Eulero-Maruyama il rumore deve distinguersi: gamma alto -> fedelta' bassa
+    from src.studi import valuta as _valuta
+    p_base = Param(N=16, seed=7)
+    r0 = _valuta(p_base, T=0.03, salva_ogni=2, T_rec=0.03)
+    p_hi = Param(N=16, gamma=0.25, seed=7)
+    r1 = _valuta(p_hi, T=0.03, salva_ogni=2, T_rec=0.03)
+    assert r1["fedelta"] < r0["fedelta"] - 0.005, (r0["fedelta"], r1["fedelta"])
+    assert r1["fedelta"] < 1.0
+
+
+def test_fy_nonnegativa_con_rumore_forte():
+    p = Param(N=16, gamma=0.25, seed=7)
+    snap = simula(p, T=0.03, protocollo="stimolo", salva_ogni=2)
+    assert np.all(np.asarray(snap["Fy"][-1]) >= 0.0)
+
+
+def test_invariante_lambda_g_presente_e_finito():
+    from src.frammento_2d import verifica_invarianza as _ver
+    p = Param(N=64, seed=7)
+    for D in (p.D0, p.Dx, p.Dy):
+        inv = invariante_nv(p, D, T=0.06)
+        assert np.isfinite(inv["lambda_g"]) and inv["lambda_g"] > 0
+        assert np.isfinite(inv["eta_g"]) and inv["eta_g"] > 0
+    assert _ver(p, T=0.06)["cv"] < 0.2
