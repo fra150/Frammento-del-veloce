@@ -1,5 +1,9 @@
 # Frammento del Veloce
 
+![coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-32_passed-brightgreen)
+![python](https://img.shields.io/badge/python-3.13-blue)
+
 Libreria di simulazione numerica per la diffusione dinamica della memoria.
 
 Modello a tre livelli geometrici:
@@ -125,14 +129,20 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# suite completa in locale (24 test, ~3 s)
+# veloci di default (29 test, <2 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
-# suite completa dentro Docker
-docker run --rm --entrypoint python frammento-del-veloce:latest -m pytest tests/ -q
+# tutti, inclusa la demo completa con 7 figure (~10 s)
+python -m pytest tests/ -q --run-slow
 
-# pipeline completa di integrazione (2D + 1D + 7 figure)
-docker compose run --rm frammento all
+# solo gli slow
+python -m pytest tests/ -q --run-slow -m slow
+
+# con coverage (XML in output/coverage.xml)
+python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
+
+# dentro Docker
+docker run --rm --entrypoint python frammento-del-veloce:latest -m pytest tests/ -q --run-slow
 ```
 
 Copertura: conservazione massa g0, decrescita di Lyapunov, stima di `D`

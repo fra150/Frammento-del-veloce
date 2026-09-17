@@ -8,7 +8,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir pytest
+    && pip install --no-cache-dir pytest pytest-cov
 
 COPY src/ ./src/
 COPY tests/ ./tests/

@@ -1,0 +1,13 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: test lenti (demo completa con 7 figure, usare --run-slow)",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = false
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

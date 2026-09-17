@@ -202,6 +202,10 @@ def lyapunov(F0, Fx, Fy, F_essenza, w=(0.5, 0.3, 0.2)):
 
 def derivata_numerica(t: np.ndarray, V: np.ndarray) -> np.ndarray:
     """dV/dt stimata alle differenze finite (centrate all'interno)."""
+    t = np.asarray(t, dtype=float)
+    V = np.asarray(V, dtype=float)
+    if V.size < 2:
+        return np.zeros_like(V)  # un solo snapshot: nessuna pendenza stimabile
     return np.gradient(V, t)
 
 

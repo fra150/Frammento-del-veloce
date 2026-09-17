@@ -96,6 +96,14 @@ def test_fedelta_identica_uguale_uno():
     assert abs(fedelta(snap, snap) - 1.0) < 1e-12
 
 
+def test_simula_rumore_colorato_rilassamento():
+    p = Param(N=16, seed=7)
+    snap = simula(p, T=0.03, protocollo="rilassamento", salva_ogni=2,
+                  stocastico=True, rumore_bianco=False)
+    assert len(snap["t"]) >= 2
+    assert np.all(np.isfinite(snap["Fy"][-1]))
+
+
 def test_lyapunov_nonnegativo():
     p = Param(N=16, seed=7)
     snap = simula(p, T=0.01, protocollo="rilassamento", salva_ogni=2)
@@ -117,6 +125,19 @@ def test_turing_vincolato_a_g0():
     assert np.all(a >= 0)
     # il pattern vive solo dentro il supporto di g0
     assert np.allclose(a * mask, a)
+
+
+def test_derivata_numerica_snapshot_singolo():
+    # regressione: un solo snapshot non deve far crashare np.gradient
+    dV = derivata_numerica(np.array([0.0]), np.array([3.5]))
+    assert dV.shape == (1,)
+    assert dV[0] == 0.0
+
+
+def test_riepilogo_snapshot_singolo_non_crash():
+    p = Param(N=16, seed=7)
+    snap = simula(p, T=0.001, protocollo="stimolo")  # un solo snapshot
+    assert "Lyapunov" in riepilogo(snap)
 
 
 def test_riepilogo_contiene_chiavi():
