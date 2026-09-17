@@ -20,7 +20,7 @@ def cmd_2d(args):
               f" (vero {D:.6f})  lambda_g = {inv['lambda_g']:.4f}")
     ver = verifica_invarianza(p)
     lam = ver["lambda"]
-    print(f"invarianza: lambda_g g0/gx/gy = {lam['g0']:.3f} / "
+    print(f"stimatore diffusivita': lambda_g g0/gx/gy = {lam['g0']:.3f} / "
           f"{lam['gx']:.3f} / {lam['gy']:.3f}  media = {ver['media']:.3f} ± "
           f"{ver['std']:.3f} (CV = {ver['cv'] * 100:.1f}%, "
           f"D in [{ver['d_min']:.4f}, {ver['d_max']:.4f}])")

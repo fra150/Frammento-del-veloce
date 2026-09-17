@@ -49,7 +49,7 @@ def safe_corr(A: np.ndarray, B: np.ndarray) -> float:
 
 
 def tempo_recupero(p: Param, base: dict, ampiezza: float = 0.5,
-                   T_rec: float = 1.00, salva_ogni: int = 5,
+                   T_rec: float = 1.00, salva_ogni: int = 2,
                    frazione: float = 0.05) -> tuple[float, bool]:
     """Twin experiment: gemello imperturbato vs gemello perturbato (bump).
 
@@ -60,6 +60,10 @@ def tempo_recupero(p: Param, base: dict, ampiezza: float = 0.5,
 
     T_rec=1.0 (scala ~3/(alpha+kappa_x)): con T_rec=0.30 quasi nessuna
     config recuperava (tasso ~3.6 -> tau~0.28, servono ~0.8 per il 5%).
+    L'attraversamento della soglia e' interpolato linearmente tra i due
+    snapshot a cavallo (non il primo punto di griglia), con snapshot fini
+    (salva_ogni=2). Resta identico tra config che condividono lo stesso
+    sottosistema Fx deterministico (atteso per disegno, non un artefatto).
     """
     X, Y = griglia(p)
     bump = ampiezza * np.exp(-((X - 0.5 * p.L) ** 2 + (Y - 0.5 * p.L) ** 2)
@@ -74,10 +78,19 @@ def tempo_recupero(p: Param, base: dict, ampiezza: float = 0.5,
     e0 = float(np.sqrt(np.sum(bump ** 2)))
     if e0 < EPS:
         return 0.0, True
+    t_prev: float | None = None
+    r_prev: float | None = None
     for t, Au, Ap in zip(sp["t"], su["Fx"], sp["Fx"]):
         r = float(np.sqrt(np.sum((np.asarray(Ap) - np.asarray(Au)) ** 2))) / e0
         if r < frazione:
-            return float(t), True
+            t = float(t)
+            if t_prev is not None and r_prev is not None and r != r_prev:
+                # interpolazione lineare dell'attraversamento di soglia
+                f = (frazione - r_prev) / (r - r_prev)
+                f = min(1.0, max(0.0, f))
+                return t_prev + f * (t - t_prev), True
+            return t, True
+        t_prev, r_prev = float(t), r
     return float(T_rec), False
 
 

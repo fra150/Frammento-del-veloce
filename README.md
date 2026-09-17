@@ -135,34 +135,35 @@ Pi_M(F) = F * M0 / ∫F dx
 gia' implementata nel simulatore 1D (`project_mass`, `project_novelty` con
 `novelty_budget`).
 
-### 2.4 Invarianza in forma normalizzata (grandezza indipendente dalla geometria)
+### 2.4 Stimatore della diffusivita' (lineare, non un invariante geometrico)
 
-La forma `n = v` e' un **principio qualitativo di bilanciamento** (n e' una
-massa, v una velocita'/diffusivita': hanno dimensioni diverse). La vecchia
+La forma `n = v` resta un **principio qualitativo di bilanciamento** (n e'
+una massa, v una velocita'/diffusivita': hanno dimensioni diverse). La vecchia
 forma `n = lambda_g * v_tilde` con `lambda_g = 1/v_tilde` per livello e'
 **tautologica** (definisce `lambda_g` invece di misurarla) e non va usata
-come prova.
+come prova — e non lo e' nemmeno quanto segue.
 
-La grandezza indipendente dalla geometria e':
+Definiamo, solo come controllo numerico dello schema:
 
 ```text
 v = D_eff misurato da `<r^2> = 4 D t`,  v_tilde = v / D_g0
 lambda_g = D_vero / v,    eta_g = v / D_vero = 1/lambda_g
 ```
 
-Se lo schema preserva lo scaling diffusivo, `lambda_g` e' **costante al
-variare di D** (livelli g0/gx/gy) e `v_tilde` scala linearmente con `D/D0`.
-Verifica (`N=48`, `python -m src 2d`):
+Risultato (`N=48`, `python -m src 2d`):
 
 ```text
 g0: v_tilde = 0.7934  lambda_g = 1.2604
 gx: v_tilde = 0.1744  lambda_g = 1.1467
 gy: v_tilde = 0.0356  lambda_g = 1.1236
-invarianza: media = 1.177 ± 0.060 (CV = 5.1%, D in [0.0020, 0.0500])
+media = 1.177 ± 0.060 (CV = 5.1%, D in [0.0020, 0.0500])
 ```
 
-`D` varia di 25x, `lambda_g` resta entro ±6%: lo scaling lineare e' reale,
-non una definizione. Funzione: `verifica_invarianza(p)`.
+Lettura onesta: lo **stimatore della diffusivita' e' risultato lineare e
+quasi non distorto su un range di D di 25x** (CV 5–7%). E' una verifica
+numerica rispettabile della discretizzazione a `dx` fisso — non la prova di
+un invariante geometrico della memoria: e' una proprieta' dello schema, e
+`lambda_g` puo' spostarsi cambiando `dx`. Funzione: `verifica_invarianza(p)`.
 
 ### 2.5 Novita' controllata (Turing in gy)
 
@@ -188,7 +189,9 @@ rh = rho a^2 - mu_h h
   perturbato (bump gaussiano) in rilassamento deterministico; primo istante
   in cui l'energia della perturbazione scende sotto il 5% (`stato_iniziale`
   di `simula`). Finestra `T_rec = 1.00` (scala `~3/(alpha+kappa_x)`; con
-  `T_rec = 0.30` quasi nulla recuperava per costruzione).
+  `T_rec = 0.30` quasi nulla recuperava per costruzione). L'attraversamento
+  e' interpolato linearmente tra snapshot (snapshot fini, `salva_ogni=2`),
+  non il primo punto di griglia.
 - **LFP sintetico**: theta 6 Hz + gamma 45 Hz con ampiezza gamma modulata
   dalla novita' (analogia computazionale, vedi §7).
 
@@ -396,64 +399,72 @@ Nota di disegno: qualita'/continuita'/`max dV/dt` dipendono da g0/gx
 (deterministici) e **devono** restare identici al variare di `gamma` — la
 sonda del rumore e' la fedelta' di gy (det vs stoc) con Eulero-Maruyama
 (`sqrt(dt)`) e la novita' media (rettifica `Fy >= 0`).
+Nelle tabelle multi-seed le colonne con `± 0.0000` (qualita', adattamento,
+`t_rec`) sono **indipendenti dal seed per costruzione** (sottosistema
+g0/gx deterministico), non un errore di calcolo.
 
 ### 6.1 Sweep dei parametri (singolo seed 7)
 
 | config | massa g0 | qualita' | continuita' | fedelta' (gy) | max dV/dt | dV/dt<=0 | novita' | t_rec |
 |---|---|---|---|---|---|---|---|---|
-| A base (stimolo, bianco) | 1.0000 | 0.4877 | 0.9995 | 0.9986 | -6.83 | 100% | 0.0121 | 0.490 |
-| B rumore nullo | 1.0000 | 0.4877 | 0.9995 | 1.0000 | -6.83 | 100% | 0.0121 | 0.490 |
-| C rumore alto (γ=0.15) | 1.0000 | 0.4877 | 0.9995 | 0.9508 | -6.83 | 100% | 0.0123 | 0.490 |
-| D rumore OU colorato | 1.0000 | 0.4877 | 0.9995 | 0.9480 | -6.83 | 100% | 0.0121 | 0.490 |
-| E creativita' alta (β=2.0) | 1.0000 | 0.4877 | 0.9995 | 0.9986 | -6.83 | 100% | 0.0123 | 0.490 |
-| F rilassamento | 1.0000 | 0.4872 | 0.9995 | 0.9986 | -6.80 | 100% | 0.0121 | 0.490 |
-| G adattamento forte (α=8.0) | 1.0000 | **0.2554** | 0.9994 | 0.9986 | -5.45 | 100% | 0.0121 | 0.243 |
+| A base (stimolo, bianco) | 1.0000 | 0.4877 | 0.9995 | 0.9986 | -6.83 | 100% | 0.0121 | 0.487 |
+| B rumore nullo | 1.0000 | 0.4877 | 0.9995 | 1.0000 | -6.83 | 100% | 0.0121 | 0.487 |
+| C rumore alto (γ=0.15) | 1.0000 | 0.4877 | 0.9995 | 0.9508 | -6.83 | 100% | 0.0123 | 0.487 |
+| D rumore OU colorato | 1.0000 | 0.4877 | 0.9995 | 0.9480 | -6.83 | 100% | 0.0121 | 0.487 |
+| E creativita' alta (β=2.0) | 1.0000 | 0.4877 | 0.9995 | 0.9986 | -6.83 | 100% | 0.0123 | 0.487 |
+| F rilassamento | 1.0000 | 0.4872 | 0.9995 | 0.9986 | -6.80 | 100% | 0.0121 | 0.487 |
+| G adattamento forte (α=8.0) | 1.0000 | **0.2554** | 0.9994 | 0.9986 | -5.45 | 100% | 0.0121 | 0.239 |
 
 ### 6.2 Sweep multi-seed (5 seed: 7, 11, 13, 21, 33 — media ± std)
 
 | config | qualita' | fedelta' (gy) | novita' | adattamento | t_rec |
 |---|---|---|---|---|---|
-| A base | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 ± 0.000 |
-| B rumore nullo | 0.4877 ± 0.0000 | 1.0000 ± 0.0000 | 0.0120 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 ± 0.000 |
-| C rumore alto (γ=0.15) | 0.4877 ± 0.0000 | 0.9493 ± 0.0057 | 0.0121 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 ± 0.000 |
-| D OU colorato | 0.4877 ± 0.0000 | 0.9502 ± 0.0066 | 0.0119 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 ± 0.000 |
-| E β=2.0 | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0121 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 ± 0.000 |
-| F rilassamento | 0.4872 ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | 0.4798 ± 0.0000 | 0.490 ± 0.000 |
-| G α=8.0 | **0.2554** ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | **0.7312** ± 0.0000 | **0.243** ± 0.000 |
+| A base | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 ± 0.000 |
+| B rumore nullo | 0.4877 ± 0.0000 | 1.0000 ± 0.0000 | 0.0120 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 ± 0.000 |
+| C rumore alto (γ=0.15) | 0.4877 ± 0.0000 | 0.9493 ± 0.0057 | 0.0121 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 ± 0.000 |
+| D OU colorato | 0.4877 ± 0.0000 | 0.9502 ± 0.0066 | 0.0119 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 ± 0.000 |
+| E β=2.0 | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0121 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 ± 0.000 |
+| F rilassamento | 0.4872 ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | 0.4798 ± 0.0000 | 0.487 ± 0.000 |
+| G α=8.0 | **0.2554** ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | **0.7312** ± 0.0000 | **0.239** ± 0.000 |
 
 Lettura: il rumore ora ha effetto reale e significativo — A vs B vs C sulla
 fedelta' (0.9988 ± 0.0002 vs 1.0000 vs 0.9493 ± 0.0057: differenze ≫ std);
-β alza la novita' (E: 0.0121 vs A: 0.0119); α forte dimezza la qualita' ma
-raddoppia l'adattamento (0.73 vs 0.48) e dimezza `t_rec`. Stabile ovunque
-(`dV/dt<=0` 100%, massa g0 esatta); recupero al 100% con `T_rec=1.00`.
+β alza la novita' (E: 0.0121 vs A: 0.0119, significativo ma di effetto
+contenuto); α forte dimezza la qualita' ma raddoppia l'adattamento (0.73 vs
+0.48) e dimezza `t_rec`. Stabile ovunque (`dV/dt<=0` 100%, massa g0 esatta);
+recupero al 100% con `T_rec=1.00`.
+`t_rec` e' identico tra A–F per disegno (il twin perturba solo `Fx`, il cui
+sottosistema deterministico non dipende da gy/rumore: stesse traiettorie,
+stesso attraversamento interpolato); solo G (α diverso) si distingue.
 
 ### 6.3 Ablazione dei livelli (singolo seed 7)
 
 | config | massa g0 | qualita' | novita' | fedelta' | dV/dt<=0 | t_rec | adattamento |
 |---|---|---|---|---|---|---|---|
 | 1 solo diffusione | 1.0000 | 0.7088 | 0.0119 | 1.0000 | 100% | 1.000+ | 0.2040 |
-| 2 g0+gx (senza gy) | 1.0000 | 0.4877 | 0.0119 | 1.0000 | 100% | 0.490 | 0.4793 |
-| 3 completo | 1.0000 | 0.4877 | 0.0121 | 0.9986 | 100% | 0.490 | 0.4793 |
-| 4 senza vincolo (ky=0, K=5) | 1.0000 | 0.4877 | **0.0125** | 0.9987 | 100% | 0.490 | 0.4793 |
-| 5 senza rumore | 1.0000 | 0.4877 | 0.0121 | 1.0000 | 100% | 0.490 | 0.4793 |
-| 6 rumore eccessivo (γ=0.25) | 1.0000 | 0.4877 | **0.0128** | 0.8924 | 100% | 0.490 | 0.4793 |
+| 2 g0+gx (senza gy) | 1.0000 | 0.4877 | 0.0119 | 1.0000 | 100% | 0.487 | 0.4793 |
+| 3 completo | 1.0000 | 0.4877 | 0.0121 | 0.9986 | 100% | 0.487 | 0.4793 |
+| 4 senza vincolo (ky=0, K=5) | 1.0000 | 0.4877 | **0.0125** | 0.9987 | 100% | 0.487 | 0.4793 |
+| 5 senza rumore | 1.0000 | 0.4877 | 0.0121 | 1.0000 | 100% | 0.487 | 0.4793 |
+| 6 rumore eccessivo (γ=0.25) | 1.0000 | 0.4877 | **0.0128** | 0.8924 | 100% | 0.487 | 0.4793 |
 
 ### 6.4 Ablazione multi-seed (media ± std)
 
 | config | qualita' | fedelta' | novita' | adattamento | t_rec |
 |---|---|---|---|---|---|
 | 1 solo diffusione | 0.7088 ± 0.0000 | 1.0000 ± 0.0000 | 0.0118 ± 0.0002 | 0.2040 ± 0.0000 | 1.000 (0% rec) |
-| 2 g0+gx | 0.4877 ± 0.0000 | 1.0000 ± 0.0000 | 0.0118 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 (100%) |
-| 3 completo | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 (100%) |
-| 4 senza vincolo | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0124 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 (100%) |
-| 5 senza rumore | 0.4877 ± 0.0000 | 1.0000 ± 0.0000 | 0.0120 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 (100%) |
-| 6 γ=0.25 | 0.4877 ± 0.0000 | 0.8864 ± 0.0140 | 0.0125 ± 0.0002 | 0.4793 ± 0.0000 | 0.490 (100%) |
+| 2 g0+gx | 0.4877 ± 0.0000 | 1.0000 ± 0.0000 | 0.0118 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 (100%) |
+| 3 completo | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0119 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 (100%) |
+| 4 senza vincolo | 0.4877 ± 0.0000 | 0.9988 ± 0.0002 | 0.0124 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 (100%) |
+| 5 senza rumore | 0.4877 ± 0.0000 | 1.0000 ± 0.0000 | 0.0120 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 (100%) |
+| 6 γ=0.25 | 0.4877 ± 0.0000 | 0.8864 ± 0.0140 | 0.0125 ± 0.0002 | 0.4793 ± 0.0000 | 0.487 (100%) |
 
 Lettura: g0 da solo = qualita' max (0.71) ma adattamento basso (0.20) e nessun
 recupero senza accoppiamento (t_rec = finestra, 0%); gx porta l'adattamento a
 0.48 al prezzo della somiglianza; gy aggiunge novita'; senza vincolo la
-novita' cresce (+4%: il vincolo trattiene); γ=0.25 crolla la fedelta'
-(0.89 ± 0.01) e alza la novita' (+5%).
+novita' cresce (+4%, significativo ma di effetto contenuto: il vincolo
+trattiene); γ=0.25 crolla la fedelta' (0.89 ± 0.01) e alza la novita' (+5%,
+significativo ma di effetto contenuto).
 
 ## 7. Limiti e natura del modello
 

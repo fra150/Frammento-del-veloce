@@ -264,22 +264,23 @@ def esperimento_diffusione(p: Param, D: float, T: float = 0.06,
 
 
 def invariante_nv(p: Param, D: float, T: float = 0.06) -> dict:
-    """Verifica numerica dell'invarianza in forma normalizzata.
+    """Controllo numerico dello stimatore di diffusivita' (forma normalizzata).
 
     n  = massa totale del Frammento (numero di elementi)
     v  = velocita' di diffusione misurata da ``<r^2> = 4 D t``
     v_tilde = v / D_g0 : velocita' adimensionale nella scala fissata da g0.
 
-    La forma 'n = v' e' un principio qualitativo di bilanciamento (n e v hanno
-    dimensioni diverse). La grandezza indipendente dalla geometria e':
+    La forma 'n = v' resta un principio qualitativo di bilanciamento (n e v
+    hanno dimensioni diverse). La grandezza di controllo e':
 
         lambda_g = D_vero / v   (efficienza numerica inversa)
         eta_g    = v / D_vero = 1/lambda_g
 
-    Se lo schema numerico preserva lo scaling diffusivo, lambda_g e' costante
-    al variare di D (livelli g0/gx/gy): v_tilde scala linearmente con D/D0.
-    La vecchia forma n = lambda*v_tilde con lambda=1/v_tilde per livello e'
-    tautologica e NON va usata come prova di invarianza.
+    Se lo schema e' lineare e quasi non distorto, lambda_g e' ~costante al
+    variare di D. E' una proprieta' della discretizzazione a dx fisso, NON
+    la prova di un invariante geometrico della memoria (lambda_g puo'
+    spostarsi cambiando dx). La vecchia forma n = lambda*v_tilde con
+    lambda=1/v_tilde per livello e' tautologica e NON va usata come prova.
     """
     e = esperimento_diffusione(p, D, T)
     n = 1.0                       # massa iniziale normalizzata del Frammento
@@ -292,10 +293,12 @@ def invariante_nv(p: Param, D: float, T: float = 0.06) -> dict:
 
 
 def verifica_invarianza(p: Param, T: float = 0.06) -> dict:
-    """Costanza di lambda_g sui tre livelli (prova di invarianza geometrica).
+    """Linearita' dello stimatore di diffusivita' sui tre livelli.
 
-    Ritorna lambda per g0/gx/gy, media, std e CV. Invarianza = CV piccolo
-    a fronte di D che varia di >10x.
+    Ritorna lambda per g0/gx/gy, media, std e CV. Stimatore lineare e quasi
+    non distorto = CV piccolo a fronte di D che varia di >10x. Non e' la
+    prova di un invariante geometrico: e' un controllo dello schema a dx
+    fisso.
     """
     Ds = {"g0": p.D0, "gx": p.Dx, "gy": p.Dy}
     lam = {}
