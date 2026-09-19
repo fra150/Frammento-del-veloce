@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
-![coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-47_passed-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-54_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -20,6 +20,11 @@ Modello a tre livelli geometrici:
 - **g0** — essenza perfetta / invariante (`R = 0`, solo diffusione conservativa)
 - **gx** — operativita' vincolata agli input (accoppiamento con `x(t)`)
 - **gy** — novita' controllata (reazione non lineare + rumore, vincolata da `g0` e `gx`)
+
+Livello trasversale **gf** (garanzia del frammento, `src/frammento_gf.py`):
+quiete attiva + certificazione + memoria a costo zero. Non aggiunge dinamica,
+verifica lo stato finale (`Fx` in quiete rispetto a `Fo`/essenza) e certifica
+solo se quiete AND qualita' AND budget novita' sono ok (mai se quiete=False).
 
 Il progetto distingue tre piani (§2): **modello concettuale** (l'idea di
 g0/gx/gy), **modello matematico** (equazioni, vincoli, condizioni) e
@@ -41,13 +46,16 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 ```text
 Framento del veloce/
 ├── src/
-│   ├── __init__.py        # export unificati Param / Params
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | all
+│   ├── __init__.py        # export unificati Param / Params + gf
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
+│   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 47 test (43 fast + 4 slow con --run-slow)
+├── tests/                 # 54 test (50 fast + 4 slow con --run-slow)
+│   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
+│   └── ...
 ├── output/                # PNG/CSV/md generati (creata al primo run)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
 ├── run.py                 # avvio rapido: python run.py [all]
@@ -62,6 +70,7 @@ Framento del veloce/
 |---|---|
 | `frammento_2d.py` | `Param`, `griglia`, `laplaciano`, `essenza`, `input_field` (Lissajous), `simula` (Eulero-Maruyama con `sqrt(dt)`), `lyapunov`, `derivata_numerica`, `esperimento_diffusione`, `invariante_nv`, `verifica_invarianza` (`lambda_g`), `turing_gy` (Gierer-Meinhardt), `metriche`, `fedelta`, `lfp_sintetico`, `riepilogo` |
 | `frammento_1d.py` | `Params`, `Domain` (periodico / Neumann), `G0` / `GX` / `GY`, `History`, `FrammentoDelVeloce` (`project_novelty`, `project_mass`, `fidelity_test`, `report`), `plot` |
+| `frammento_gf.py` | `verifica_quiete` (err_fx_fo, err_fo_ess, novita_rel, fraz dV<=0), `certifica_frammento` (quiete AND qualita' AND budget, mai se quiete=False), `correggi_micro_errori` (proposta non certificante), `MemoriaGF` (chiave sha256 valori+shape+dx, salva/richiama, stats hit/miss), `diagnostica_gf` |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -195,6 +204,35 @@ rh = rho a^2 - mu_h h
 - **LFP sintetico**: theta 6 Hz + gamma 45 Hz con ampiezza gamma modulata
   dalla novita' (analogia computazionale, vedi §7).
 
+### 2.7 Livello gf (quiete attiva + certificazione + memoria)
+
+Strato di garanzia sullo stato finale (`Fo`, `Fx`, `Fy`, `essenza`), senza
+modificare la dinamica 2D. Solo `numpy` + `hashlib`.
+
+```text
+err_fo_ess  = ||Fo - essenza|| / (||essenza|| + eps)
+err_fx_fo   = ||Fx - Fo|| / (||Fo|| + eps)
+novita_rel  = ||Fy|| / (||essenza|| + eps)
+quiete      = (err_fo_ess < delta) AND (err_fx_fo < eps)
+              AND (novita_rel <= budget) AND (fraz dV<=0 >= 0.9 se V_hist >= 2 punti)
+certificato = quiete AND (qualita' >= soglia) AND (novita_rel <= budget)
+Fx_corr     = (1-f) Fx + f Fo   (proposta leggera, NON certifica)
+```
+
+- Default tarati (Fo diffonde con `D0=0.05`, quindi `||Fo-essenza|| ~0.66`
+  su base `N=48 T=0.15` anche in regime sano): `eps=0.60`, `delta=0.90`,
+  `soglia_qualita=0.40`, `budget_novita_rel=0.30` (0.25 in `verifica_quiete`).
+- Anti-tautologia: niente auto-certificazione (la correzione va rivalutata
+  con `verifica_quiete`/`certifica_frammento`), fedelta' solo su gy (non gx),
+  soglie frozen, invalidazione cache su cambio valori/shape/`dx` (chiave
+  sha256 di valori arrotondati a 1e-6 + shape + `dx`).
+- `MemoriaGF`: `chiave` / `salva` / `richiama` → `(hit, payload)` /
+  `stats` (`hits`, `misses`, `salvataggi`, `elementi`). Il recall non
+  ricalcola nulla (costo ~0).
+- Riferimento (`N=48, T=0.15`, `python -m src gf`): quiete SI
+  (`err_fx_fo=0.4231<0.60`, `err_fo_ess=0.6636<0.90`), `Q=0.4877`,
+  certificato SI, cache `hit1=True hit2=True`.
+
 ---
 
 ## 3. Requisiti
@@ -230,14 +268,17 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (43 test, ~4 s; gli slow vengono skippati)
+# veloci di default (50 test, ~9 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
-# tutti, inclusi slow: demo completa + sweep/ablazione mini (~24 s)
+# tutti, inclusi slow: demo completa + sweep/ablazione mini (~30 s)
 python -m pytest tests/ -q --run-slow
 
 # solo gli slow
 python -m pytest tests/ -q --run-slow -m slow
+
+# solo il livello gf (7 test, <2 s, N=16, nessun file)
+python -m pytest tests/test_gf.py -q
 
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
@@ -249,7 +290,10 @@ docker run --rm --entrypoint python frammento-del-veloce:latest -m pytest tests/
 Copertura: conservazione massa g0, decrescita di Lyapunov, stima di `D`
 entro un fattore 2 (forma normalizzata `v_tilde`), range di qualita'/
 continuita', fedelta' su gy, twin di recupero, LFP, Turing vincolato a `g0`,
-conservazione massa 1D, `fidelity_test`, CLI 2d/1d, sweep/ablazione, import demo.
+conservazione massa 1D, `fidelity_test`, CLI 2d/1d, sweep/ablazione, import demo,
+quiete SI/NO, Fy esplosa, anti-tautologia (mai certificato se non quiete),
+cache hit a costo zero, correzione non certificante. Totale **54 test**
+(50 fast + 4 slow), coverage **88%** sul full run.
 
 ---
 
@@ -386,6 +430,46 @@ python -m src ablazione --N 48 --T 0.15 --seeds 7 11 13 21 33
 
 Vedi §6 per le tabelle dei risultati.
 
+### 5.5 Livello gf (quiete + certificazione + memoria)
+
+```bash
+python -m src gf --N 48 --T 0.15
+python -m src gf --N 48 --T 0.15 --protocollo rilassamento
+```
+
+Output atteso (base `N=48, T=0.15`):
+
+```text
+GF quiete=SI (err_fx_fo=0.4231, err_fo_ess=0.6636, nov_rel=0.0056) | cert=SI (Q=0.488, ad=n/d, nov_rel=0.0056) | certificato: quiete attiva, qualita=0.4877>=0.4, novita_rel=0.0056<=0.3
+motivo: certificato: quiete attiva, qualita=0.4877>=0.4, novita_rel=0.0056<=0.3
+cache: chiave 39d2a41dcbb9... salva->richiama hit1=True hit2=True (costo ricomputazione ~0) stats={'hits': 2, 'misses': 0, 'salvataggi': 1, 'elementi': 1}
+```
+
+Uso da codice:
+
+```python
+from src.frammento_2d import Param, simula
+from src.frammento_gf import verifica_quiete, certifica_frammento, MemoriaGF, correggi_micro_errori
+
+p = Param(N=48, seed=7)
+snap = simula(p, T=0.15, protocollo="stimolo", salva_ogni=20)
+Fo, Fx, Fy, ess = snap["F0"][-1], snap["Fx"][-1], snap["Fy"][-1], snap["essenza"]
+
+q = verifica_quiete(Fo, Fx, ess, p.dx, Fy=Fy, V_hist=snap["diag"]["V"])
+c = certifica_frammento(Fo, Fx, Fy, ess, p.dx, diag=snap["diag"])
+print(c["motivo"])  # certificato solo se quiete attiva
+
+# micro-correzione (non certifica: va rivalutata)
+Fx_corr = correggi_micro_errori(Fx, Fo, fattore=0.1)
+
+# memoria a costo zero (solo se certificato)
+mem = MemoriaGF()
+k = mem.chiave(Fo, Fx, Fy, ess, dx=p.dx)
+if c["certificato"]:
+    mem.salva(k, {"qualita": c["qualita"], "quiete": q})
+    hit, payload = mem.richiama(k)  # nessun ricalcolo
+```
+
 ---
 
 ## 6. Studi di robustezza
@@ -466,6 +550,22 @@ novita' cresce (+4%, significativo ma di effetto contenuto: il vincolo
 trattiene); γ=0.25 crolla la fedelta' (0.89 ± 0.01) e alza la novita' (+5%,
 significativo ma di effetto contenuto).
 
+### 6.5 Livello gf (quiete + certificazione, N=48 T=0.15 det.)
+
+| config | err_fx_fo (<0.60) | err_fo_ess (<0.90) | qualita' (>=0.40) | quiete | cert |
+|---|---|---|---|---|---|
+| A base (stimolo, bianco) | 0.4231 | 0.6636 | 0.4877 | SI | SI |
+| C rumore alto (γ=0.15) | 0.4231 | 0.6636 | 0.4877 | SI | SI |
+| F rilassamento | — | — | 0.4872 | SI | SI |
+| G adattamento forte (α=8.0) | — | — | 0.2554 | SI | NO (qualita' < soglia) |
+| γ=0.25 (certificazione completa gf+G3) | SI | SI | 0.4877 | SI | NO (fedelta' gy 0.8864±0.0140, rifiutata) |
+
+Lettura: il rumore entra solo in gy stocastica, quindi A e C sono identici
+su quiete/qualita' per disegno (la sonda del rumore resta la fedelta' di gy,
+§6.1–6.2); G resta quieto ma non certificato per qualita' sotto soglia;
+γ=0.25 resta quieto in gf puro ma viene rifiutato nella certificazione
+completa (fedelta' gy crollata). Comando: `python -m src gf --N 48 --T 0.15`.
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
@@ -485,6 +585,12 @@ significativo ma di effetto contenuto).
   (solo diffusione) non recupera entro la finestra.
 - **Orizzonte breve**: sweep/ablazione a `T=0.15`; comportamenti su tempi
   lunghi e pattern di Turing completi restano da esplorare.
+- **gf**: soglie tarate sul regime sano (`eps=0.60`, `delta=0.90`,
+  `soglia_qualita=0.40`), non principi primi — con `Fo` che diffonde,
+  soglie strette renderebbero la quiete impossibile per disegno. "Costo
+  zero" = nessun ricalcolo al recall (la costruzione resta O(simula));
+  la cache non riusa mai certificati obsoleti (chiave sha256 su
+  valori+shape+`dx`). La correzione `Fx_corr` non certifica da sola.
 
 ---
 
