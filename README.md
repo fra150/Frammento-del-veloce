@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
 ![coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-54_passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-62_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -46,15 +46,17 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 ```text
 Framento del veloce/
 ├── src/
-│   ├── __init__.py        # export unificati Param / Params + gf
+│   ├── __init__.py        # export unificati Param / Params + gf + bio
 │   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
+│   ├── confronto_bio.py   # coerenza LFP/theta-gamma + confronto spettrale onesto
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 54 test (50 fast + 4 slow con --run-slow)
+├── tests/                 # 62 test (58 fast + 4 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
+│   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
 │   └── ...
 ├── output/                # PNG/CSV/md generati (creata al primo run)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
@@ -71,6 +73,7 @@ Framento del veloce/
 | `frammento_2d.py` | `Param`, `griglia`, `laplaciano`, `essenza`, `input_field` (Lissajous), `simula` (Eulero-Maruyama con `sqrt(dt)`), `lyapunov`, `derivata_numerica`, `esperimento_diffusione`, `invariante_nv`, `verifica_invarianza` (`lambda_g`), `turing_gy` (Gierer-Meinhardt), `metriche`, `fedelta`, `lfp_sintetico`, `riepilogo` |
 | `frammento_1d.py` | `Params`, `Domain` (periodico / Neumann), `G0` / `GX` / `GY`, `History`, `FrammentoDelVeloce` (`project_novelty`, `project_mass`, `fidelity_test`, `report`), `plot` |
 | `frammento_gf.py` | `verifica_quiete` (err_fx_fo, err_fo_ess, novita_rel, fraz dV<=0), `certifica_frammento` (quiete AND qualita' AND budget, mai se quiete=False), `correggi_micro_errori` (proposta non certificante), `MemoriaGF` (chiave sha256 valori+shape+dx, salva/richiama, stats hit/miss), `diagnostica_gf` |
+| `confronto_bio.py` | coerenza interna LFP + ponte reale onesto: `spettro_potenza`, `potenza_relativa_theta_gamma` (theta 4-8, gamma 30-60), `filtro_banda`, `indice_pac_theta_gamma` (MI Tort), `pac_vs_surrogato` (z vs ampiezza mescolata), `similarita_spettrale` (coseno), `valida_sistema_sintetico` (ok_interno, mai bio), `confronta_sintetico_vs_reale` (`validazione_biologica=False` sempre), `carica_eeg_csv` |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -233,12 +236,33 @@ Fx_corr     = (1-f) Fx + f Fo   (proposta leggera, NON certifica)
   (`err_fx_fo=0.4231<0.60`, `err_fo_ess=0.6636<0.90`), `Q=0.4877`,
   certificato SI, cache `hit1=True hit2=True`.
 
+### 2.8 Confronto bio: coerenza interna LFP/theta-gamma (non validazione)
+
+`lfp_sintetico` impone per costruzione theta 6 Hz + gamma 45 Hz con gamma
+gated da theta e modulata dalla novita' — i picchi di fig07 sono quindi
+tautologici (vedi §7). `src/confronto_bio.py` verifica solo la coerenza
+interna e offre un confronto spettrale onesto con un tracciato reale:
+
+- **Spettro**: periodogramma rFFT con Hann; potenze theta 4-8 Hz e gamma
+  30-60 Hz + rapporto gamma/theta.
+- **PAC**: Modulation Index di Tort (fase theta vs ampiezza gamma, 18 bin,
+  MI in [0,1]) + `pac_vs_surrogato` (z vs ampiezza mescolata, 20 surrogati).
+- **`valida_sistema_sintetico`** (bassa vs alta novita'): picchi 6/45 Hz
+  presenti + potenza gamma che cresce con la novita' + PAC z>2. Riferimento
+  (`N=16`, `fs=1000`, `durata=2.0`): novita' 1.0, rel_theta 0.70,
+  rel_gamma 0.272, PAC MI 0.0915 vs surr 0.0007, **z=358** (atteso: gating
+  imposto). Flag `validazione_biologica=False` sempre.
+- **`confronta_sintetico_vs_reale`**: similarita' coseno tra spettri +
+  potenze relative; motivo con `NON validazione biologica` esplicito.
+- **`carica_eeg_csv`**: carica un canale da CSV (per dataset aperti
+  pre-esportati: OpenNeuro/PhysioNet/TUH); nessun download automatico.
+
 ---
 
 ## 3. Requisiti
 
 - Python 3.10+ (testato su 3.13)
-- `numpy`, `matplotlib` (`scipy` elencata per estensioni future)
+- `numpy`, `matplotlib`, `scipy` (scipy usata da `confronto_bio`: Hilbert/PAC)
 
 ```bash
 pip install -r requirements.txt
@@ -268,10 +292,10 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (50 test, ~9 s; gli slow vengono skippati)
+# veloci di default (58 test, ~5 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
-# tutti, inclusi slow: demo completa + sweep/ablazione mini (~30 s)
+# tutti, inclusi slow: demo completa + sweep/ablazione mini (~25 s)
 python -m pytest tests/ -q --run-slow
 
 # solo gli slow
@@ -279,6 +303,9 @@ python -m pytest tests/ -q --run-slow -m slow
 
 # solo il livello gf (7 test, <2 s, N=16, nessun file)
 python -m pytest tests/test_gf.py -q
+
+# solo coerenza LFP/PAC/confronto (8 test, ~7 s, nessun download)
+python -m pytest tests/test_confronto_bio.py -q
 
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
@@ -292,8 +319,11 @@ entro un fattore 2 (forma normalizzata `v_tilde`), range di qualita'/
 continuita', fedelta' su gy, twin di recupero, LFP, Turing vincolato a `g0`,
 conservazione massa 1D, `fidelity_test`, CLI 2d/1d, sweep/ablazione, import demo,
 quiete SI/NO, Fy esplosa, anti-tautologia (mai certificato se non quiete),
-cache hit a costo zero, correzione non certificante. Totale **54 test**
-(50 fast + 4 slow), coverage **88%** sul full run.
+cache hit a costo zero, correzione non certificante, picchi 6/45 Hz imposti,
+gamma che cresce con novita', PAC>surrogati, sim-sim>sim-rumore, confronto
+onesto (`validazione_biologica=False`), CSV temp. Totale **62 test**
+(58 fast + 4 slow), coverage **88%** sul full run
+(`confronto_bio.py` 88%, `studi.py` 97%, `frammento_2d.py` 94%).
 
 ---
 
@@ -470,6 +500,25 @@ if c["certificato"]:
     hit, payload = mem.richiama(k)  # nessun ricalcolo
 ```
 
+### 5.6 Confronto bio (coerenza interna + ponte reale)
+
+```python
+from src.frammento_2d import Param, essenza, lfp_sintetico
+from src.confronto_bio import valida_sistema_sintetico, confronta_sintetico_vs_reale, carica_eeg_csv
+
+p = Param(N=16, seed=7)
+ess = essenza(p)
+s_bassa = lfp_sintetico(p, ess * 0 + ess.mean(), fs=1000.0, durata=1.0, seed=3)
+s_alta = lfp_sintetico(p, ess, fs=1000.0, durata=1.0, seed=3)
+print(valida_sistema_sintetico(s_bassa["lfp"], s_alta["lfp"], fs=1000.0)["motivo"])
+
+# con un tracciato reale pre-esportato in CSV (una colonna = un canale)
+reale = carica_eeg_csv("dati/eeg_canale.csv", colonna=0, fs=256.0)
+print(confronta_sintetico_vs_reale(s_alta["lfp"][:reale["n_campioni"]], reale["segnale"], fs=256.0)["motivo"])
+```
+
+8 test in `tests/test_confronto_bio.py` (nessun download, <10 s).
+
 ---
 
 ## 6. Studi di robustezza
@@ -566,10 +615,26 @@ su quiete/qualita' per disegno (la sonda del rumore resta la fedelta' di gy,
 γ=0.25 resta quieto in gf puro ma viene rifiutato nella certificazione
 completa (fedelta' gy crollata). Comando: `python -m src gf --N 48 --T 0.15`.
 
+### 6.6 Confronto bio: coerenza interna (`N=16`, `fs=1000`, 8 test)
+
+| check | risultato |
+|---|---|
+| picchi 6/45 Hz dove imposti | SI (sopra mediana banda 2-12 / 20-70 Hz) |
+| gamma cresce con novita' | SI (bassa→alta novita', `p_gamma` cresce) |
+| PAC Tort reale vs surrogati | MI 0.0915 vs surr 0.0007, **z=358** (>2) |
+| sim-sim vs sim-rumore (coseno) | sim-sim > sim-rumore |
+| `confronta_sintetico_vs_reale` | similarita' in [0,1], `validazione_biologica=False` sempre |
+
+Lettura: il sistema sintetico e' coerente per costruzione (gating theta su
+gamma + novita'→gamma). Non e' evidenza biologica: lo z altissimo conferma
+il gating imposto, non il cervello. Test: `pytest tests/test_confronto_bio.py`.
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
-  EEG/fMRI/comportamentale reale).
+  EEG/fMRI/comportamentale reale). `src/confronto_bio.py` verifica solo la
+  coerenza interna del sintetico + similarita' spettrale onesta
+  (`validazione_biologica=False` sempre).
 - **Sensibile ai parametri**: oltre una soglia di adattamento (α≈8) la
   qualita' si dimezza; i vincoli di gy sono necessari (config 4, +4% novita'
   senza vincolo).
