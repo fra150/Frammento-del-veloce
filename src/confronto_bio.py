@@ -34,6 +34,8 @@ __all__ = [
     "valida_sistema_sintetico",
     "confronta_sintetico_vs_reale",
     "carica_eeg_csv",
+    "trend_carico",
+    "p_permutazione_trend",
 ]
 
 EPS = 1e-12
@@ -284,3 +286,51 @@ def carica_eeg_csv(path: str, colonna: int = 0, fs: float = 256.0,
     segnale = np.asarray(segnale, dtype=float).ravel()
     return {"segnale": segnale, "fs": float(fs),
             "n_campioni": int(segnale.size), "path": str(path)}
+
+
+# ---------------------------------------------------------------------------
+# Trend di gruppo sui carichi (Fase 12)
+# ---------------------------------------------------------------------------
+def trend_carico(matrice: np.ndarray, carichi=(3, 6, 9, 12, 15)) -> dict:
+    """Spearman pooled carico vs metrica su matrice soggetti×carichi.
+
+    `matrice[i, j]` = mediana del soggetto i al carico j. Ritorna rho, p
+    (asintotico) e medie di gruppo per carico. Test esplorativo di gruppo,
+    non validazione.
+    """
+    from scipy.stats import spearmanr
+    M = np.asarray(matrice, dtype=float)
+    car = np.asarray(list(carichi), dtype=float)
+    x = np.repeat(car, M.shape[0])
+    y = np.concatenate([M[:, j] for j in range(M.shape[1])])
+    mask = np.isfinite(y)
+    rho, p = spearmanr(x[mask], y[mask])
+    return {"rho": float(rho), "p": float(p),
+            "medie_gruppo": [float(np.nanmean(M[:, j])) for j in range(M.shape[1])],
+            "n_soggetti": int(M.shape[0])}
+
+
+def p_permutazione_trend(matrice: np.ndarray, carichi=(3, 6, 9, 12, 15),
+                         n_perm: int = 2000, seed: int = 0) -> dict:
+    """p-value per permutazione: mischia le etichette carico entro soggetto.
+
+    Statistica = |rho| di Spearman pooled (two-sided). Ritorna p con
+    correzione +1 (conservativa) e rho osservato.
+    """
+    from scipy.stats import spearmanr
+    rng = np.random.default_rng(int(seed))
+    M = np.asarray(matrice, dtype=float)
+    car = np.asarray(list(carichi), dtype=float)
+    x = np.repeat(car, M.shape[0])
+    y0 = np.concatenate([M[:, j] for j in range(M.shape[1])])
+    rho0 = abs(float(spearmanr(x[np.isfinite(y0)], y0[np.isfinite(y0)])[0]))
+    cnt = 0
+    for _ in range(int(n_perm)):
+        Mp = np.array([rng.permutation(row) for row in M])
+        yp = np.concatenate([Mp[:, j] for j in range(Mp.shape[1])])
+        m = np.isfinite(yp)
+        if abs(float(spearmanr(x[m], yp[m])[0])) >= rho0:
+            cnt += 1
+    return {"rho_osservato": float(rho0),
+            "p_perm": float((cnt + 1) / (int(n_perm) + 1)),
+            "n_perm": int(n_perm)}

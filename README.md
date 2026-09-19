@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
 ![coverage](https://img.shields.io/badge/coverage-84%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-65_passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-68_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -55,9 +55,10 @@ Framento del veloce/
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 65 test (61 fast + 4 slow con --run-slow)
+├── tests/                 # 68 test (64 fast + 4 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
+│   ├── test_bio_fase12.py # 3 test pipeline trend/permutazione (sintetico + matrice reale)
 │   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
 │   └── ...
 ├── output/                # PNG/CSV/md generati (ignorati, TRANNE output_test versionato)
@@ -76,7 +77,8 @@ Framento del veloce/
 | `frammento_2d.py` | `Param`, `griglia`, `laplaciano`, `essenza`, `input_field` (Lissajous), `simula` (Eulero-Maruyama con `sqrt(dt)`), `lyapunov`, `derivata_numerica`, `esperimento_diffusione`, `invariante_nv`, `verifica_invarianza` (`lambda_g`), `turing_gy` (Gierer-Meinhardt), `metriche`, `fedelta`, `lfp_sintetico`, `riepilogo` |
 | `frammento_1d.py` | `Params`, `Domain` (periodico / Neumann), `G0` / `GX` / `GY`, `History`, `FrammentoDelVeloce` (`project_novelty`, `project_mass`, `fidelity_test`, `report`), `plot` |
 | `frammento_gf.py` | `verifica_quiete` (err_fx_fo, err_fo_ess, novita_rel, fraz dV<=0), `certifica_frammento` (quiete AND qualita' AND budget, mai se quiete=False), `correggi_micro_errori` (proposta non certificante), `MemoriaGF` (chiave sha256 valori+shape+dx, salva/richiama, stats hit/miss), `diagnostica_gf` |
-| `confronto_bio.py` | coerenza interna LFP + ponte reale onesto: `spettro_potenza`, `potenza_relativa_theta_gamma` (theta 4-8, gamma 30-60), `filtro_banda`, `indice_pac_theta_gamma` (MI Tort), `pac_vs_surrogato` (z vs ampiezza mescolata), `similarita_spettrale` (coseno), `valida_sistema_sintetico` (ok_interno, mai bio), `confronta_sintetico_vs_reale` (`validazione_biologica=False` sempre), `carica_eeg_csv` |
+| `confronto_bio.py` | coerenza interna LFP + ponte reale onesto: `spettro_potenza`, `potenza_relativa_theta_gamma` (theta 4-8, gamma 30-60), `filtro_banda`, `indice_pac_theta_gamma` (MI Tort), `pac_vs_surrogato` (z vs ampiezza mescolata), `similarita_spettrale` (coseno), `valida_sistema_sintetico` (ok_interno, mai bio), `confronta_sintetico_vs_reale` (`validazione_biologica=False` sempre), `carica_eeg_csv`,
+  `trend_carico` (Spearman pooled) + `p_permutazione_trend` (Fase 12) |
 | `stress_500.py` | stress test domande g0->gf: `genera_domande` (bump casuali + repliche ogni 25), `interroga` (catena massa/qualita'/novita'/quiete/cert/cache condivisa), `esegui` (CSV + md + 2 pannelli in `output/output_test/`) |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
@@ -296,7 +298,7 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (61 test, ~5 s; gli slow vengono skippati)
+# veloci di default (64 test, ~5 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
 # tutti, inclusi slow: demo completa + sweep/ablazione mini (~26 s)
@@ -329,9 +331,9 @@ quiete SI/NO, Fy esplosa, anti-tautologia (mai certificato se non quiete),
 cache hit a costo zero, correzione non certificante, picchi 6/45 Hz imposti,
 gamma che cresce con novita', PAC>surrogati, sim-sim>sim-rumore, confronto
 onesto (`validazione_biologica=False`), CSV temp, catena stress g0->gf +
-replica cache. Totale **65 test**
-(61 fast + 4 slow), coverage **84%** sul full run
-(`confronto_bio.py` 88%, `studi.py` 97%, `frammento_2d.py` 94%,
+replica cache, trend/permutazione Fase 12. Totale **68 test**
+(64 fast + 4 slow), coverage **84%** sul full run
+(`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
 `frammento_gf.py` 71%, `stress_500.py` 34% — lo script full-500 gira fuori CI).
 
 ---
@@ -653,6 +655,20 @@ Lettura: il sistema sintetico e' coerente per costruzione (gating theta su
 gamma + novita'→gamma). Non e' evidenza biologica: lo z altissimo conferma
 il gating imposto, non il cervello. Test: `pytest tests/test_confronto_bio.py`.
 
+### 6.6b Fase 12: gruppo 10 soggetti EEG reali (ds005095, Sternberg)
+
+Pool frontale F3/Fz/F4, passa-alto 1 Hz + ICA, retention 1.5–3.5 s,
+gamma/theta 30–48/4–8 Hz → mediana per carico e soggetto. Dati grezzi
+~3.1 GB mai nel repo; matrice 10×5 in `output/output_test/fase12_mat.npy`,
+report in `output/output_test/bio_fase12.md`.
+
+Medie di gruppo per carico 3/6/9/12/15: **0.610, 0.551, 0.466, 0.486, 0.527**.
+Spearman pooled **rho=-0.009, p=0.95**; Friedman p=0.08 n.s.; permutazione
+entro-soggetto (2000) **p=0.89**. Variabilità inter-soggetto ~10x.
+Verdetto: **nullo di gruppo** — nessun trend carico→gamma/theta. Pipeline
+statistica testata in `tests/test_bio_fase12.py` (trend sintetico rilevato,
+rumore n.s., matrice reale nulla).
+
 ### 6.7 Stress 500 domande (`N=32`, `T=0.10`, seed 7)
 
 | misura | risultato |
@@ -671,9 +687,13 @@ atteso in questo regime — per vedere bocciature servono bump forti/α=8
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
-  EEG/fMRI/comportamentale reale). `src/confronto_bio.py` verifica solo la
-  coerenza interna del sintetico + similarita' spettrale onesta
-  (`validazione_biologica=False` sempre).
+  EEG/fMRI/comportamentale reale a supporto). `src/confronto_bio.py` verifica
+  solo la coerenza interna del sintetico + similarita' spettrale onesta
+  (`validazione_biologica=False` sempre). Piloti esplorativi su EEG reale
+  (OpenNeuro ds005095: N=1 e poi gruppo N=10, Sternberg, retention):
+  nessun effetto carico→gamma/theta (Spearman rho=-0.009, p=0.95;
+  permutazione p=0.89) — report locali in `output/output_test/bio_fase12.md`.
+  Risultati nulli, non validazione.
 - **Sensibile ai parametri**: oltre una soglia di adattamento (α≈8) la
   qualita' si dimezza; i vincoli di gy sono necessari (config 4, +4% novita'
   senza vincolo).
