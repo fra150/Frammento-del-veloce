@@ -141,6 +141,19 @@ def build_parser():
     aG.add_argument("--seed", type=int, default=7)
     aG.set_defaults(func=cmd_gf)
 
+    def cmd_stress500(args):
+        from .stress_500 import OUT_DIR_DEFAULT, esegui
+        esegui(n=args.n, N=args.N, T=args.T, seed=args.seed,
+               out_dir=args.out or OUT_DIR_DEFAULT)
+
+    aS5 = sub.add_parser("stress500", help="stress test N domande g0->gf + figure")
+    aS5.add_argument("--n", type=int, default=500)
+    aS5.add_argument("--N", type=int, default=32)
+    aS5.add_argument("--T", type=float, default=0.10)
+    aS5.add_argument("--seed", type=int, default=7)
+    aS5.add_argument("--out", type=str, default="")
+    aS5.set_defaults(func=cmd_stress500)
+
     aA = sub.add_parser("all", help="2d + 1d + demo in sequenza")
     aA.add_argument("--N", type=int, default=96)
     aA.add_argument("--T", type=float, default=0.30)

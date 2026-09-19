@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
-![coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-62_passed-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-84%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-65_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -47,18 +47,21 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 Framento del veloce/
 ├── src/
 │   ├── __init__.py        # export unificati Param / Params + gf + bio
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | all
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
 │   ├── confronto_bio.py   # coerenza LFP/theta-gamma + confronto spettrale onesto
+│   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 62 test (58 fast + 4 slow con --run-slow)
+├── tests/                 # 65 test (61 fast + 4 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
+│   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
 │   └── ...
-├── output/                # PNG/CSV/md generati (creata al primo run)
+├── output/                # PNG/CSV/md generati (ignorati, TRANNE output_test versionato)
+│   └── output_test/       # stress 500: CSV + 2 pannelli + md (push su GitHub)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
 ├── run.py                 # avvio rapido: python run.py [all]
 ├── pyproject.toml         # marker slow + config coverage
@@ -74,6 +77,7 @@ Framento del veloce/
 | `frammento_1d.py` | `Params`, `Domain` (periodico / Neumann), `G0` / `GX` / `GY`, `History`, `FrammentoDelVeloce` (`project_novelty`, `project_mass`, `fidelity_test`, `report`), `plot` |
 | `frammento_gf.py` | `verifica_quiete` (err_fx_fo, err_fo_ess, novita_rel, fraz dV<=0), `certifica_frammento` (quiete AND qualita' AND budget, mai se quiete=False), `correggi_micro_errori` (proposta non certificante), `MemoriaGF` (chiave sha256 valori+shape+dx, salva/richiama, stats hit/miss), `diagnostica_gf` |
 | `confronto_bio.py` | coerenza interna LFP + ponte reale onesto: `spettro_potenza`, `potenza_relativa_theta_gamma` (theta 4-8, gamma 30-60), `filtro_banda`, `indice_pac_theta_gamma` (MI Tort), `pac_vs_surrogato` (z vs ampiezza mescolata), `similarita_spettrale` (coseno), `valida_sistema_sintetico` (ok_interno, mai bio), `confronta_sintetico_vs_reale` (`validazione_biologica=False` sempre), `carica_eeg_csv` |
+| `stress_500.py` | stress test domande g0->gf: `genera_domande` (bump casuali + repliche ogni 25), `interroga` (catena massa/qualita'/novita'/quiete/cert/cache condivisa), `esegui` (CSV + md + 2 pannelli in `output/output_test/`) |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -292,10 +296,10 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (58 test, ~5 s; gli slow vengono skippati)
+# veloci di default (61 test, ~5 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
-# tutti, inclusi slow: demo completa + sweep/ablazione mini (~25 s)
+# tutti, inclusi slow: demo completa + sweep/ablazione mini (~26 s)
 python -m pytest tests/ -q --run-slow
 
 # solo gli slow
@@ -306,6 +310,9 @@ python -m pytest tests/test_gf.py -q
 
 # solo coerenza LFP/PAC/confronto (8 test, ~7 s, nessun download)
 python -m pytest tests/test_confronto_bio.py -q
+
+# solo catena stress g0->gf (3 test, ~2 s, sottoinsieme N=16)
+python -m pytest tests/test_stress_500.py -q
 
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
@@ -321,9 +328,11 @@ conservazione massa 1D, `fidelity_test`, CLI 2d/1d, sweep/ablazione, import demo
 quiete SI/NO, Fy esplosa, anti-tautologia (mai certificato se non quiete),
 cache hit a costo zero, correzione non certificante, picchi 6/45 Hz imposti,
 gamma che cresce con novita', PAC>surrogati, sim-sim>sim-rumore, confronto
-onesto (`validazione_biologica=False`), CSV temp. Totale **62 test**
-(58 fast + 4 slow), coverage **88%** sul full run
-(`confronto_bio.py` 88%, `studi.py` 97%, `frammento_2d.py` 94%).
+onesto (`validazione_biologica=False`), CSV temp, catena stress g0->gf +
+replica cache. Totale **65 test**
+(61 fast + 4 slow), coverage **84%** sul full run
+(`confronto_bio.py` 88%, `studi.py` 97%, `frammento_2d.py` 94%,
+`frammento_gf.py` 71%, `stress_500.py` 34% — lo script full-500 gira fuori CI).
 
 ---
 
@@ -519,6 +528,21 @@ print(confronta_sintetico_vs_reale(s_alta["lfp"][:reale["n_campioni"]], reale["s
 
 8 test in `tests/test_confronto_bio.py` (nessun download, <10 s).
 
+### 5.7 Stress test 500 domande (g0->gf)
+
+```bash
+python -m src stress500 --n 500 --N 32 --T 0.10 --seed 7
+```
+
+Ogni domanda = cue di richiamo (bump gaussiano casuale + seed/protocollo/
+gamma casuali); risposta = catena massa g0 → qualita' gx → novita' gy →
+quiete/cert/cache gf con `MemoriaGF` condivisa (ogni 25 domande una replica
+esatta per provare il recall). Output in `output/output_test/` (versionato
+su GitHub): `stress_500.csv` (500 righe), `stress_500.md`,
+`fig_stress_pannello1.png` (tassi + istogrammi), `fig_stress_pannello2.png`
+(scatter eq/ea + qualita' nel tempo + hit cumulati). Senza ricalcolare:
+script `Temp/opencode/rigenera_stress.py` rigenera le figure dal CSV.
+
 ---
 
 ## 6. Studi di robustezza
@@ -628,6 +652,21 @@ completa (fedelta' gy crollata). Comando: `python -m src gf --N 48 --T 0.15`.
 Lettura: il sistema sintetico e' coerente per costruzione (gating theta su
 gamma + novita'→gamma). Non e' evidenza biologica: lo z altissimo conferma
 il gating imposto, non il cervello. Test: `pytest tests/test_confronto_bio.py`.
+
+### 6.7 Stress 500 domande (`N=32`, `T=0.10`, seed 7)
+
+| misura | risultato |
+|---|---|
+| quiete SI | 500/500 (100%) |
+| certificati | 500/500 (100%) |
+| cache hit repliche | 19/19 (100%) |
+| qualita' media | 0.595 |
+| massa g0 drift max | ~1e-16 |
+
+Lettura: a bump moderati e orizzonte breve il sistema regge senza crolli e
+la memoria richiama tutte le repliche a costo ~0. Il 100% di certificati e'
+atteso in questo regime — per vedere bocciature servono bump forti/α=8
+(vedi §6.5). Dati e figure versionati in `output/output_test/`.
 
 ## 7. Limiti e natura del modello
 

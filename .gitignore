@@ -14,8 +14,10 @@ frammetoveloce.md
 *.fls
 *.fdb_latexmk
 
-# Output generati (PNG/CSV/md da simulazioni: mai pushare da adesso)
-output/
+# Output generati (PNG/CSV/md da simulazioni: ignorati TRANNE output_test versionato)
+output/*
+!output/output_test/
+!output/output_test/*
 
 # Bytecode e cache Python (generati in automatico)
 __pycache__/
