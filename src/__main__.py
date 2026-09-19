@@ -66,6 +66,29 @@ def cmd_ablazione(args):
                    seeds=seeds)
 
 
+def cmd_gf(args):
+    from .frammento_2d import Param, simula
+    from .frammento_gf import verifica_quiete, certifica_frammento, MemoriaGF, diagnostica_gf
+
+    p = Param(N=args.N, seed=args.seed)
+    snap = simula(p, T=args.T, protocollo=args.protocollo, salva_ogni=20)
+    Fo, Fx, Fy, ess = snap["F0"][-1], snap["Fx"][-1], snap["Fy"][-1], snap["essenza"]
+    q = verifica_quiete(Fo, Fx, ess, p.dx, Fy=Fy, V_hist=snap["diag"]["V"])
+    c = certifica_frammento(Fo, Fx, Fy, ess, p.dx, diag=snap["diag"])
+    print(diagnostica_gf(q, c))
+    print(f"motivo: {c['motivo']}")
+    # demo memoria a costo zero: salva + doppio richiamo
+    mem = MemoriaGF()
+    k = mem.chiave(Fo, Fx, Fy, ess, dx=p.dx)
+    if c["certificato"]:
+        mem.salva(k, {"qualita": c["qualita"], "quiete": q})
+        hit1, _ = mem.richiama(k)
+        hit2, _ = mem.richiama(k)
+        print(f"cache: chiave {k[:12]}... salva->richiama hit1={hit1} hit2={hit2} (costo ricomputazione ~0) stats={mem.stats()}")
+    else:
+        print(f"cache: non salvato (non certificato) stats={mem.stats()}")
+
+
 def build_parser():
     ap = argparse.ArgumentParser(description="Frammento del veloce - runner unificato")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -110,6 +133,13 @@ def build_parser():
                     help="se multipli, ablazione multi-seed con media±std")
     aB.add_argument("--out", type=str, default="")
     aB.set_defaults(func=cmd_ablazione)
+
+    aG = sub.add_parser("gf", help="quiete attiva + certificazione + cache (livello gf)")
+    aG.add_argument("--N", type=int, default=48)
+    aG.add_argument("--T", type=float, default=0.15)
+    aG.add_argument("--protocollo", default="stimolo", choices=["stimolo", "rilassamento"])
+    aG.add_argument("--seed", type=int, default=7)
+    aG.set_defaults(func=cmd_gf)
 
     aA = sub.add_parser("all", help="2d + 1d + demo in sequenza")
     aA.add_argument("--N", type=int, default=96)

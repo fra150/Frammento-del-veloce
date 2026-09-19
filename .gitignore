@@ -1,7 +1,21 @@
 # File esclusi dal push (documentazione locale non versionata)
 latex/
 Frammento_del_veloce_IT.pdf
+Frammento_del_veloce_IT_V2*
+Frammento_del_veloce_EN_V2*
 frammetoveloce.md
+
+# Generati LaTeX (mai pushare: restano solo in locale)
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# Output generati (PNG/CSV/md da simulazioni: mai pushare da adesso)
+output/
 
 # Bytecode e cache Python (generati in automatico)
 __pycache__/
@@ -11,3 +25,6 @@ __pycache__/
 .coverage*
 output/coverage.xml
 diario.md
+
+# Configurazione locale OpenCode
+.opencode/
