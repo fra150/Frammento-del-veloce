@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
-![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-76_passed-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-84_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -47,24 +47,25 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 Framento del veloce/
 ├── src/
 │   ├── __init__.py        # export unificati Param / Params + gf + bio
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | all
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
-│   ├── rete_frammento.py  # rete che non distrugge: nucleo frozen + slot + test 1000
+│   ├── rete_frammento.py  # rete che non distrugge: nucleo frozen + slot + test 1000 + richiamo associativo
 │   ├── confronto_bio.py   # coerenza LFP/theta-gamma + confronto spettrale onesto
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 76 test (71 fast + 5 slow con --run-slow)
+├── tests/                 # 84 test (78 fast + 6 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
 │   ├── test_rete_1000.py  # 8 test rete che non distrugge (7 fast + 1 slow full-1000)
+│   ├── test_rete_assoc.py # 8 test richiamo associativo (7 fast + 1 slow shift di classe)
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
 │   ├── test_bio_fase12.py # 3 test pipeline trend/permutazione (sintetico + matrice reale)
 │   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
 │   └── ...
 ├── output/                # PNG/CSV/md generati (ignorati, TRANNE output_test versionato)
-│   └── output_test/       # stress 500 + rete 1000: CSV + pannelli + md (push su GitHub)
+│   └── output_test/       # stress 500 + rete 1000 + assoc: CSV + pannelli + md (push su GitHub)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
 ├── run.py                 # avvio rapido: python run.py [all]
 ├── pyproject.toml         # marker slow + config coverage
@@ -82,7 +83,7 @@ Framento del veloce/
 | `confronto_bio.py` | coerenza interna LFP + ponte reale onesto: `spettro_potenza`, `potenza_relativa_theta_gamma` (theta 4-8, gamma 30-60), `filtro_banda`, `indice_pac_theta_gamma` (MI Tort), `pac_vs_surrogato` (z vs ampiezza mescolata), `similarita_spettrale` (coseno), `valida_sistema_sintetico` (ok_interno, mai bio), `confronta_sintetico_vs_reale` (`validazione_biologica=False` sempre), `carica_eeg_csv`,
   `trend_carico` (Spearman pooled) + `p_permutazione_trend` (Fase 12) |
 | `stress_500.py` | stress test domande g0->gf: `genera_domande` (bump casuali + repliche ogni 25), `interroga` (catena massa/qualita'/novita'/quiete/cert/cache condivisa), `esegui` (CSV + md + 2 pannelli in `output/output_test/`) |
-| `rete_frammento.py` | rete che non distrugge: `ReteFrammento` (nucleo frozen + slot isolati + scrittura solo via gf + espandi/rifiuta), `ReteIngenuaCondivisa` (baseline P condiviso che deriva), `genera_cue` (cue indipendenti senza repliche), `esegui_test_1000` (certifica n_cert, impara n_nuove, ri-testa), `salva_report_r1000` (CSV + md + fig11 in `output/output_test/`) |
+| `rete_frammento.py` | rete che non distrugge: `ReteFrammento` (nucleo frozen + slot isolati + scrittura solo via gf + espandi/rifiuta), `ReteIngenuaCondivisa` (baseline P condiviso che deriva), `genera_cue` (cue indipendenti senza repliche), `esegui_test_1000` (certifica n_cert, impara n_nuove, ri-testa), `salva_report_r1000` (CSV + md + fig11); richiamo associativo: `cue_parziale` (blocco/casuale + rumore), `ricostruisci_associativo` (residuo/gx), `esegui_test_associativo` (shift di classe A->B), `salva_report_assoc` (CSV + md + fig13) |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -301,10 +302,10 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (71 test, ~8 s; gli slow vengono skippati)
+# veloci di default (78 test, ~7 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
-# tutti, inclusi slow: demo + sweep/ablazione mini + rete 1000 (~93 s)
+# tutti, inclusi slow: demo + sweep/ablazione mini + rete 1000 + assoc (~2,5 min)
 python -m pytest tests/ -q --run-slow
 
 # solo gli slow
@@ -321,6 +322,9 @@ python -m pytest tests/test_stress_500.py -q
 
 # solo rete che non distrugge (7 fast, ~6 s, N=16, nessun file)
 python -m pytest tests/test_rete_1000.py -q
+
+# solo richiamo associativo (7 fast, ~3 s, N=16, nessun file)
+python -m pytest tests/test_rete_assoc.py -q
 
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
@@ -339,10 +343,12 @@ gamma che cresce con novita', PAC>surrogati, sim-sim>sim-rumore, confronto
 onesto (`validazione_biologica=False`), CSV temp, catena stress g0->gf +
 replica cache, trend/permutazione Fase 12, nucleo frozen + solo-gf-scrive +
 capacita' espandi/rifiuta + interferenza zero + ingenua che degrada +
-cache hit rete. Totale **76 test**
-(71 fast + 5 slow), coverage **83%** sul full run
+cache hit rete, cue parziali (blocco/casuale/rumore) + ricostruzione
+deterministica + protetta invariante + condivisa accoppiata al set.
+Totale **84 test**
+(78 fast + 6 slow), coverage **81%** sul full run
 (`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
-`frammento_gf.py` 73%, `rete_frammento.py` 76%,
+`frammento_gf.py` 73%, `rete_frammento.py` 69%,
 `stress_500.py` 34% — gli script full girano fuori CI).
 
 ---
@@ -575,6 +581,29 @@ res = esegui_test_1000(n_cert=200, n_nuove=800, N=32, T=0.10, seed=7)
 print(res["max_degrado"], res["distrutti"], res["nucleo_ok"])  # 0.0 0 True
 ```
 
+### 5.9 Richiamo associativo (cue parziali → ricostruzione) + shift di classe
+
+```bash
+python -m src assoc --n-cert 200 --n-nuove 800 --N 32 --T 0.10 --seed 7
+```
+
+Richiamo da cue **parziali** (non ri-esecuzione): il cue e' una versione
+parziale di `Fx` certificato (blocco centrale o pixel sparsi + rumore);
+la ricostruzione usa la dinamica condivisa del modello — `residuo`:
+`Fx_rec = Fo + R`, con `R = Fx - Fo` esteso armonicamente (diffusione pura,
+ancoraggio sui pixel osservati); alternativa `gx` (rilassamento verso il
+prior). Set A (200, bump a sinistra) poi set B (800, bump a destra): shift
+di classe. Output in `output/output_test/`: `assoc_1000.csv` (600 righe =
+200 ricordi × 3 frazioni), `assoc_1000.md`, `fig13_assoc.png`.
+
+Uso da codice:
+
+```python
+from src.rete_frammento import esegui_test_associativo, salva_report_assoc
+res = esegui_test_associativo(n_cert=200, n_nuove=800, N=32, T=0.10, seed=7)
+print(res["verifica_protetta_max_diff"], res["agg"][0.75]["degrado_ing"])
+```
+
 ---
 
 ## 6. Studi di robustezza
@@ -731,6 +760,39 @@ impossibile, non fortuna). La baseline ingenua con campo plastico condiviso
 degrada davvero (28 distrutti): la protezione non e' vacua. Dati e figura
 (`rete_1000.csv/.md`, `fig11_rete_Q.png`) versionati in `output/output_test/`.
 
+### 6.9 Richiamo associativo (`N=32`, `T=0.10`, seed 7, bump 3-8)
+
+Set A 200 certificati (bump a sinistra), poi set B 800 (bump a destra):
+`||P_B - P_A||/||P_A|| = 0.177`. Protetta verificata bit-identica
+prima/dopo: `max diff = 0.00e+00`.
+
+Operatori di completamento (protetta, prior = core):
+
+| frazione | residuo | media | core | armonica | gx |
+|---|---|---|---|---|---|
+| 0.25 | **0.7139 ± 0.0210** | 0.0571 | 0.6553 | 0.4729 | 0.5132 |
+| 0.50 | 0.6491 ± 0.0221 | 0.0099 | 0.6531 | 0.0499 | 0.3318 |
+| 0.75 | 0.6528 ± 0.0173 | 0.0027 | 0.6415 | 0.0062 | 0.3376 |
+
+Degrado in regime associativo (protetta vs condivisa):
+
+| frazione | protetta | condivisa P_A | condivisa dopo shift | degrado medio | degrado max | >0.05 |
+|---|---|---|---|---|---|---|
+| 0.25 | 0.7139 | 0.9472 | 0.9459 | 0.0013 | 0.0103 | 0% |
+| 0.50 | 0.6491 | 0.9104 | 0.8865 | 0.0240 | 0.0507 | 1% |
+| 0.75 | 0.6528 | 0.9008 | 0.8589 | 0.0420 | 0.0679 | 28% |
+
+Lettura onesta: (i) la ricostruzione `residuo` batte i riempimenti semplici
+e la diffusione senza nucleo (a f=0.25: +0.06 sul core, +0.24 sull'armonica
+pura); (ii) **il prior condiviso batte il core per-ricordo in qualita'
+assoluta** (0.86-0.95 vs 0.65-0.71): il pooling cattura la struttura comune
+della classe, che domina questi campi — finding riportato cosi' com'e';
+(iii) ma il richiamo condiviso e' **accoppiato al set**: dopo lo shift
+degrada per il 93-100% dei ricordi vecchi, tanto piu' quanto piu' grande e'
+il buco (fino a 0.068 singolo, 28% dei ricordi > 0.05 a f=0.75); la protetta
+e' invariante per costruzione (0 esatto, verificato). Dati e figura
+(`assoc_1000.csv/.md`, `fig13_assoc.png`) versionati in `output/output_test/`.
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
@@ -765,6 +827,14 @@ degrada davvero (28 distrutti): la protezione non e' vacua. Dati e figura
 - **rete 1000**: orizzonte breve (`T=0.10`), bump moderati (amp 0.5–2.0),
   sim deterministiche per isolare l'interferenza dal rumore; lo zero degrado
   e' strutturale (isolamento + frozen), non una misura di generalizzazione.
+- **richiamo associativo**: la ricostruzione e' il limite di diffusione del
+  modello (nessun apprendimento di un readout); il gate di certificazione
+  (`eps=0.60`) limita quanto i ricordi possono differire dal nucleo, quindi
+  limita anche l'interferenza misurabile (fino a ~0.07 per ricordo qui);
+  il prior condiviso batte il core in qualita' assoluta dentro una classe
+  stazionaria (pooling) ma e' accoppiato alla composizione del set — la
+  protetta scambia qualita' media con invarianza. Numeri non confrontabili
+  con neurobiologia.
 
 ---
 

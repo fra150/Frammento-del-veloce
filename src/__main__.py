@@ -155,6 +155,14 @@ def build_parser():
         salva_report_r1000(res, out_dir=args.out or OUT_DIR_DEFAULT,
                            N=args.N, T=args.T, seed=args.seed)
 
+    def cmd_assoc(args):
+        from .rete_frammento import OUT_DIR_DEFAULT, esegui_test_associativo, salva_report_assoc
+        res = esegui_test_associativo(n_cert=args.n_cert, n_nuove=args.n_nuove,
+                                      N=args.N, T=args.T, seed=args.seed,
+                                      tipo=args.tipo)
+        salva_report_assoc(res, out_dir=args.out or OUT_DIR_DEFAULT,
+                           N=args.N, T=args.T, seed=args.seed)
+
     aS5 = sub.add_parser("stress500", help="stress test N domande g0->gf + figure")
     aS5.add_argument("--n", type=int, default=500)
     aS5.add_argument("--N", type=int, default=32)
@@ -173,6 +181,16 @@ def build_parser():
     aR.add_argument("--politica", default="espandi", choices=["espandi", "rifiuta"])
     aR.add_argument("--out", type=str, default="")
     aR.set_defaults(func=cmd_rete1000)
+
+    aAs = sub.add_parser("assoc", help="richiamo associativo: cue parziali -> ricostruzione + shift di classe")
+    aAs.add_argument("--n-cert", type=int, default=200)
+    aAs.add_argument("--n-nuove", type=int, default=800)
+    aAs.add_argument("--N", type=int, default=32)
+    aAs.add_argument("--T", type=float, default=0.10)
+    aAs.add_argument("--seed", type=int, default=7)
+    aAs.add_argument("--tipo", default="blocco", choices=["blocco", "casuale"])
+    aAs.add_argument("--out", type=str, default="")
+    aAs.set_defaults(func=cmd_assoc)
 
     aA = sub.add_parser("all", help="2d + 1d + demo in sequenza")
     aA.add_argument("--N", type=int, default=96)

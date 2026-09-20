@@ -11,7 +11,10 @@ from .frammento_2d import Param, simula, riepilogo, invariante_nv, verifica_inva
 from .frammento_1d import Params, FrammentoDelVeloce
 from .frammento_gf import verifica_quiete, certifica_frammento, correggi_micro_errori, MemoriaGF, diagnostica_gf
 from .confronto_bio import valida_sistema_sintetico, confronta_sintetico_vs_reale, carica_eeg_csv
-from .rete_frammento import ReteFrammento, ReteIngenuaCondivisa, esegui_test_1000, genera_cue
+from .rete_frammento import (
+    ReteFrammento, ReteIngenuaCondivisa, esegui_test_1000, genera_cue,
+    cue_parziale, ricostruisci_associativo, esegui_test_associativo,
+    salva_report_assoc)
 
-__all__ = ["Param", "Params", "simula", "riepilogo", "invariante_nv", "verifica_invarianza", "FrammentoDelVeloce", "verifica_quiete", "certifica_frammento", "correggi_micro_errori", "MemoriaGF", "diagnostica_gf", "valida_sistema_sintetico", "confronta_sintetico_vs_reale", "carica_eeg_csv", "ReteFrammento", "ReteIngenuaCondivisa", "esegui_test_1000", "genera_cue"]
+__all__ = ["Param", "Params", "simula", "riepilogo", "invariante_nv", "verifica_invarianza", "FrammentoDelVeloce", "verifica_quiete", "certifica_frammento", "correggi_micro_errori", "MemoriaGF", "diagnostica_gf", "valida_sistema_sintetico", "confronta_sintetico_vs_reale", "carica_eeg_csv", "ReteFrammento", "ReteIngenuaCondivisa", "esegui_test_1000", "genera_cue", "cue_parziale", "ricostruisci_associativo", "esegui_test_associativo", "salva_report_assoc"]
 __version__ = "1.0.0"
