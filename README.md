@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
-![coverage](https://img.shields.io/badge/coverage-84%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-68_passed-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-76_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -47,22 +47,24 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 Framento del veloce/
 ├── src/
 │   ├── __init__.py        # export unificati Param / Params + gf + bio
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | all
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
+│   ├── rete_frammento.py  # rete che non distrugge: nucleo frozen + slot + test 1000
 │   ├── confronto_bio.py   # coerenza LFP/theta-gamma + confronto spettrale onesto
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 68 test (64 fast + 4 slow con --run-slow)
+├── tests/                 # 76 test (71 fast + 5 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
+│   ├── test_rete_1000.py  # 8 test rete che non distrugge (7 fast + 1 slow full-1000)
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
 │   ├── test_bio_fase12.py # 3 test pipeline trend/permutazione (sintetico + matrice reale)
 │   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
 │   └── ...
 ├── output/                # PNG/CSV/md generati (ignorati, TRANNE output_test versionato)
-│   └── output_test/       # stress 500: CSV + 2 pannelli + md (push su GitHub)
+│   └── output_test/       # stress 500 + rete 1000: CSV + pannelli + md (push su GitHub)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
 ├── run.py                 # avvio rapido: python run.py [all]
 ├── pyproject.toml         # marker slow + config coverage
@@ -80,6 +82,7 @@ Framento del veloce/
 | `confronto_bio.py` | coerenza interna LFP + ponte reale onesto: `spettro_potenza`, `potenza_relativa_theta_gamma` (theta 4-8, gamma 30-60), `filtro_banda`, `indice_pac_theta_gamma` (MI Tort), `pac_vs_surrogato` (z vs ampiezza mescolata), `similarita_spettrale` (coseno), `valida_sistema_sintetico` (ok_interno, mai bio), `confronta_sintetico_vs_reale` (`validazione_biologica=False` sempre), `carica_eeg_csv`,
   `trend_carico` (Spearman pooled) + `p_permutazione_trend` (Fase 12) |
 | `stress_500.py` | stress test domande g0->gf: `genera_domande` (bump casuali + repliche ogni 25), `interroga` (catena massa/qualita'/novita'/quiete/cert/cache condivisa), `esegui` (CSV + md + 2 pannelli in `output/output_test/`) |
+| `rete_frammento.py` | rete che non distrugge: `ReteFrammento` (nucleo frozen + slot isolati + scrittura solo via gf + espandi/rifiuta), `ReteIngenuaCondivisa` (baseline P condiviso che deriva), `genera_cue` (cue indipendenti senza repliche), `esegui_test_1000` (certifica n_cert, impara n_nuove, ri-testa), `salva_report_r1000` (CSV + md + fig11 in `output/output_test/`) |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -298,10 +301,10 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (64 test, ~5 s; gli slow vengono skippati)
+# veloci di default (71 test, ~8 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
-# tutti, inclusi slow: demo completa + sweep/ablazione mini (~26 s)
+# tutti, inclusi slow: demo + sweep/ablazione mini + rete 1000 (~93 s)
 python -m pytest tests/ -q --run-slow
 
 # solo gli slow
@@ -315,6 +318,9 @@ python -m pytest tests/test_confronto_bio.py -q
 
 # solo catena stress g0->gf (3 test, ~2 s, sottoinsieme N=16)
 python -m pytest tests/test_stress_500.py -q
+
+# solo rete che non distrugge (7 fast, ~6 s, N=16, nessun file)
+python -m pytest tests/test_rete_1000.py -q
 
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
@@ -331,10 +337,13 @@ quiete SI/NO, Fy esplosa, anti-tautologia (mai certificato se non quiete),
 cache hit a costo zero, correzione non certificante, picchi 6/45 Hz imposti,
 gamma che cresce con novita', PAC>surrogati, sim-sim>sim-rumore, confronto
 onesto (`validazione_biologica=False`), CSV temp, catena stress g0->gf +
-replica cache, trend/permutazione Fase 12. Totale **68 test**
-(64 fast + 4 slow), coverage **84%** sul full run
+replica cache, trend/permutazione Fase 12, nucleo frozen + solo-gf-scrive +
+capacita' espandi/rifiuta + interferenza zero + ingenua che degrada +
+cache hit rete. Totale **76 test**
+(71 fast + 5 slow), coverage **83%** sul full run
 (`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
-`frammento_gf.py` 71%, `stress_500.py` 34% — lo script full-500 gira fuori CI).
+`frammento_gf.py` 73%, `rete_frammento.py` 76%,
+`stress_500.py` 34% — gli script full girano fuori CI).
 
 ---
 
@@ -545,6 +554,27 @@ su GitHub): `stress_500.csv` (500 righe), `stress_500.md`,
 (scatter eq/ea + qualita' nel tempo + hit cumulati). Senza ricalcolare:
 script `Temp/opencode/rigenera_stress.py` rigenera le figure dal CSV.
 
+### 5.8 Rete che non distrugge — test dei 1000 (interferenza retroattiva)
+
+```bash
+python -m src rete1000 --n-cert 200 --n-nuove 800 --N 32 --T 0.10 --seed 7
+```
+
+Tesi: imparare cose nuove non distrugge mai quelle certificate (nucleo g0
+frozen con checksum, slot isolati, scrittura solo via gf, capacita'
+espandi/rifiuta). Protocollo: certifica 200 cue, impara 800 sopra, ri-testa
+le 200 → zero degradi o fallimento. Output in `output/output_test/`
+(versionato): `rete_1000.csv` (200 righe prima/dopo + baseline),
+`rete_1000.md`, `fig11_rete_Q.png` (Q piatta + scatter prima/dopo).
+
+Uso da codice:
+
+```python
+from src.rete_frammento import ReteFrammento, esegui_test_1000
+res = esegui_test_1000(n_cert=200, n_nuove=800, N=32, T=0.10, seed=7)
+print(res["max_degrado"], res["distrutti"], res["nucleo_ok"])  # 0.0 0 True
+```
+
 ---
 
 ## 6. Studi di robustezza
@@ -684,6 +714,23 @@ la memoria richiama tutte le repliche a costo ~0. Il 100% di certificati e'
 atteso in questo regime — per vedere bocciature servono bump forti/α=8
 (vedi §6.5). Dati e figure versionati in `output/output_test/`.
 
+### 6.8 Rete che non distrugge — test dei 1000 (`N=32`, `T=0.10`, seed 7)
+
+| misura | risultato |
+|---|---|
+| cue certificate (prime 200) | 200/200 (100%) |
+| checksum nucleo prima→dopo | invariato, ok=True |
+| PROTETTA max degrado Q | 0.00e+00 |
+| PROTETTA distrutti | 0/200 (SUCCESSO: zero degradi) |
+| INGENUA (P condiviso) max degrado | 0.4035 |
+| INGENUA distrutti | 28/200 |
+
+Lettura: dopo 800 nuovi apprendimenti le 200 Q certificate sono bit-identiche
+(sim deterministica + slot isolati + nucleo frozen: interferenza strutturalmente
+impossibile, non fortuna). La baseline ingenua con campo plastico condiviso
+degrada davvero (28 distrutti): la protezione non e' vacua. Dati e figura
+(`rete_1000.csv/.md`, `fig11_rete_Q.png`) versionati in `output/output_test/`.
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
@@ -715,6 +762,9 @@ atteso in questo regime — per vedere bocciature servono bump forti/α=8
   zero" = nessun ricalcolo al recall (la costruzione resta O(simula));
   la cache non riusa mai certificati obsoleti (chiave sha256 su
   valori+shape+`dx`). La correzione `Fx_corr` non certifica da sola.
+- **rete 1000**: orizzonte breve (`T=0.10`), bump moderati (amp 0.5–2.0),
+  sim deterministiche per isolare l'interferenza dal rumore; lo zero degrado
+  e' strutturale (isolamento + frozen), non una misura di generalizzazione.
 
 ---
 
