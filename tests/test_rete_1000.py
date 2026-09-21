@@ -32,6 +32,22 @@ def test_nucleo_immutabile_checksum():
     assert r.verifica_nucleo()["ok"] is True
 
 
+def test_nucleo_corrotto_rilevato_e_blocca_scrittura():
+    # Il congelamento e' sorvegliato, non dichiarato: se il nucleo viene
+    # toccato (nessun metodo pubblico lo fa), verifica_nucleo lo rileva
+    # e il canale di scrittura si blocca con AssertionError.
+    # Se questo test diventa rosso dopo aver toccato il guard,
+    # il "non distrugge" non dipende piu' dall'architettura.
+    r = ReteFrammento(N=16, T=0.05)
+    for cue in genera_cue(3, seed=7):
+        r.impara(cue)
+    r._nucleo += 1.0  # corruzione artificiale
+    v = r.verifica_nucleo()
+    assert v["ok"] is False
+    with pytest.raises(AssertionError):
+        r.impara(genera_cue(1, seed=99)[0])
+
+
 def test_solo_gf_scrive():
     r = ReteFrammento(N=16, T=0.05)
     n0 = len(r.slot)

@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
 ![coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-95_passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-96_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -57,9 +57,9 @@ Framento del veloce/
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 95 test (89 fast + 6 slow con --run-slow)
+├── tests/                 # 96 test (90 fast + 6 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
-│   ├── test_rete_1000.py  # 8 test rete che non distrugge (7 fast + 1 slow full-1000)
+│   ├── test_rete_1000.py  # 9 test rete che non distrugge (8 fast + 1 slow full-1000)
 │   ├── test_rete_assoc.py # 8 test richiamo associativo (7 fast + 1 slow shift di classe)
 │   ├── test_fase15.py     # 11 test CL/shift + plasticita' + retrieval OOD (fast)
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
@@ -305,7 +305,7 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (89 test, ~15 s; gli slow vengono skippati)
+# veloci di default (90 test, ~15 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
 # tutti, inclusi slow: demo + sweep/ablazione mini + rete 1000 + assoc (~6 min)
@@ -355,8 +355,8 @@ CL con shift (protetta 0 vs ingenua che degrada, EWC lam=0 = ingenua,
 EWC tarato che riduce, replay con buffer grande meglio del FIFO corto),
 plasticita' lineare + rifiuta/copertura, retrieval esatto in-distribution
 e fragile al rumore + mix che recupera il lato giusto agli estremi.
-Totale **95 test**
-(89 fast + 6 slow), coverage **81%** sul full run
+Totale **96 test**
+(90 fast + 6 slow), coverage **81%** sul full run
 (`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
 `frammento_gf.py` 73%, `rete_frammento.py` 69%, `fase15.py` 85%,
 `stress_500.py` 34% — gli script full girano fuori CI).
