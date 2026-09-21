@@ -192,6 +192,35 @@ def build_parser():
     aAs.add_argument("--out", type=str, default="")
     aAs.set_defaults(func=cmd_assoc)
 
+    def cmd_fase15(args):
+        from .fase15 import (sweep_pareto_cl, salva_report_cl,
+                             misura_plasticita, salva_report_plasticita,
+                             test_ood_mix_retrieval,
+                             test_ood_rumore_retrieval, salva_report_ood)
+        out = args.out or None
+        righe = sweep_pareto_cl(n_cert=args.n_cert, n_nuove=args.n_nuove,
+                                N=args.N, T=args.T, seed=args.seed,
+                                shift=True)
+        salva_report_cl(righe, out_dir=out, N=args.N, T=args.T,
+                        seed=args.seed, shift=True)
+        plast = misura_plasticita(n_list=[50, 100, 200, 400, 800],
+                                  N=args.N, T=args.T, seed=args.seed)
+        salva_report_plasticita(plast, out_dir=out, N=args.N, T=args.T,
+                                seed=args.seed)
+        mix = test_ood_mix_retrieval(N=args.N, T=args.T, seed=args.seed)
+        rum = test_ood_rumore_retrieval(N=args.N, T=args.T, seed=args.seed)
+        salva_report_ood(mix, rum, out_dir=out, N=args.N, T=args.T,
+                         seed=args.seed)
+
+    aF15 = sub.add_parser("fase15", help="Pareto CL + plasticita' + OOD (referee)")
+    aF15.add_argument("--n-cert", type=int, default=30)
+    aF15.add_argument("--n-nuove", type=int, default=60)
+    aF15.add_argument("--N", type=int, default=16)
+    aF15.add_argument("--T", type=float, default=0.05)
+    aF15.add_argument("--seed", type=int, default=7)
+    aF15.add_argument("--out", type=str, default="")
+    aF15.set_defaults(func=cmd_fase15)
+
     aA = sub.add_parser("all", help="2d + 1d + demo in sequenza")
     aA.add_argument("--N", type=int, default=96)
     aA.add_argument("--T", type=float, default=0.30)

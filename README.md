@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
 ![coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-84_passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-95_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -47,25 +47,27 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 Framento del veloce/
 ├── src/
 │   ├── __init__.py        # export unificati Param / Params + gf + bio
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | all
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | fase15 | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
 │   ├── rete_frammento.py  # rete che non distrugge: nucleo frozen + slot + test 1000 + richiamo associativo
+│   ├── fase15.py          # prove referee: baseline CL (Replay/EWC-lite) + plasticita' + retrieval OOD
 │   ├── confronto_bio.py   # coerenza LFP/theta-gamma + confronto spettrale onesto
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 84 test (78 fast + 6 slow con --run-slow)
+├── tests/                 # 95 test (89 fast + 6 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
 │   ├── test_rete_1000.py  # 8 test rete che non distrugge (7 fast + 1 slow full-1000)
 │   ├── test_rete_assoc.py # 8 test richiamo associativo (7 fast + 1 slow shift di classe)
+│   ├── test_fase15.py     # 11 test CL/shift + plasticita' + retrieval OOD (fast)
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
 │   ├── test_bio_fase12.py # 3 test pipeline trend/permutazione (sintetico + matrice reale)
 │   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
 │   └── ...
 ├── output/                # PNG/CSV/md generati (ignorati, TRANNE output_test versionato)
-│   └── output_test/       # stress 500 + rete 1000 + assoc: CSV + pannelli + md (push su GitHub)
+│   └── output_test/       # stress 500 + rete 1000 + assoc + fase15: CSV + pannelli + md (push su GitHub)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
 ├── run.py                 # avvio rapido: python run.py [all]
 ├── pyproject.toml         # marker slow + config coverage
@@ -84,6 +86,7 @@ Framento del veloce/
   `trend_carico` (Spearman pooled) + `p_permutazione_trend` (Fase 12) |
 | `stress_500.py` | stress test domande g0->gf: `genera_domande` (bump casuali + repliche ogni 25), `interroga` (catena massa/qualita'/novita'/quiete/cert/cache condivisa), `esegui` (CSV + md + 2 pannelli in `output/output_test/`) |
 | `rete_frammento.py` | rete che non distrugge: `ReteFrammento` (nucleo frozen + slot isolati + scrittura solo via gf + espandi/rifiuta), `ReteIngenuaCondivisa` (baseline P condiviso che deriva), `genera_cue` (cue indipendenti senza repliche), `esegui_test_1000` (certifica n_cert, impara n_nuove, ri-testa), `salva_report_r1000` (CSV + md + fig11); richiamo associativo: `cue_parziale` (blocco/casuale + rumore), `ricostruisci_associativo` (residuo/gx), `esegui_test_associativo` (shift di classe A->B), `salva_report_assoc` (CSV + md + fig13) |
+| `fase15.py` | prove referee (Fase 15): `ReteReplay` (rehearsal con buffer FIFO), `ReteEWC` (EWC-lite in forma chiusa sul campo, analogo concettuale con decadimento online), `esegui_confronto_cl` (stessa sequenza cue, con `shift` di classe) + `sweep_pareto_cl`/`salva_report_cl` (CSV + md + fig15); `misura_plasticita`/`salva_report_plasticita` (tasso cert, Q, ms/ricordo, memoria, fig16); retrieval OOD: `seleziona_prior` (MSE sul visibile) + `test_ood_mix_retrieval`/`test_ood_rumore_retrieval`/`salva_report_ood` (CSV + md + fig17) |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -302,10 +305,10 @@ generate nel container restano disponibili sull'host.
 ### Test
 
 ```bash
-# veloci di default (78 test, ~7 s; gli slow vengono skippati)
+# veloci di default (89 test, ~15 s; gli slow vengono skippati)
 python -m pytest tests/ -q
 
-# tutti, inclusi slow: demo + sweep/ablazione mini + rete 1000 + assoc (~2,5 min)
+# tutti, inclusi slow: demo + sweep/ablazione mini + rete 1000 + assoc (~6 min)
 python -m pytest tests/ -q --run-slow
 
 # solo gli slow
@@ -326,6 +329,9 @@ python -m pytest tests/test_rete_1000.py -q
 # solo richiamo associativo (7 fast, ~3 s, N=16, nessun file)
 python -m pytest tests/test_rete_assoc.py -q
 
+# solo Fase 15 CL/plasticita'/OOD (11 fast, ~8 s, N=16, report in tmp dir)
+python -m pytest tests/test_fase15.py -q
+
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
 
@@ -344,11 +350,15 @@ onesto (`validazione_biologica=False`), CSV temp, catena stress g0->gf +
 replica cache, trend/permutazione Fase 12, nucleo frozen + solo-gf-scrive +
 capacita' espandi/rifiuta + interferenza zero + ingenua che degrada +
 cache hit rete, cue parziali (blocco/casuale/rumore) + ricostruzione
-deterministica + protetta invariante + condivisa accoppiata al set.
-Totale **84 test**
-(78 fast + 6 slow), coverage **81%** sul full run
+deterministica + protetta invariante + condivisa accoppiata al set,
+CL con shift (protetta 0 vs ingenua che degrada, EWC lam=0 = ingenua,
+EWC tarato che riduce, replay con buffer grande meglio del FIFO corto),
+plasticita' lineare + rifiuta/copertura, retrieval esatto in-distribution
+e fragile al rumore + mix che recupera il lato giusto agli estremi.
+Totale **95 test**
+(89 fast + 6 slow), coverage **81%** sul full run
 (`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
-`frammento_gf.py` 73%, `rete_frammento.py` 69%,
+`frammento_gf.py` 73%, `rete_frammento.py` 69%, `fase15.py` 85%,
 `stress_500.py` 34% — gli script full girano fuori CI).
 
 ---
@@ -604,6 +614,30 @@ res = esegui_test_associativo(n_cert=200, n_nuove=800, N=32, T=0.10, seed=7)
 print(res["verifica_protetta_max_diff"], res["agg"][0.75]["degrado_ing"])
 ```
 
+### 5.10 Prove referee — Fase 15 (CL con shift + plasticita' + OOD)
+
+```bash
+# Pareto CL + plasticita' fino a 800 + OOD con retrieval (N=16, ~1 min)
+python -m src fase15 --n-cert 30 --n-nuove 60 --N 16 --T 0.05 --seed 7
+```
+
+Stessa sequenza di cue per 4 modelli (protetta / ingenua / replay / EWC-lite)
+con shift di classe A->B; misura di plasticita' (tasso certificazione,
+Q media, ms/ricordo, memoria); retrieval del prior sulla parte visibile
+(MSE) + mix composizionali e sweep di rumore. Output in
+`output/output_test/`: `fase15_cl_pareto.csv/.md` + `fig15_cl_pareto.png`,
+`fase15_plasticita.csv/.md` + `fig16_plasticita.png`,
+`fase15_ood.csv/.md` + `fig17_ood.png`.
+
+Uso da codice:
+
+```python
+from src.fase15 import sweep_pareto_cl, misura_plasticita
+from src.fase15 import test_ood_mix_retrieval, test_ood_rumore_retrieval
+righe = sweep_pareto_cl(n_cert=30, n_nuove=60, N=16, T=0.05, seed=7, shift=True)
+print(righe[0])
+```
+
 ---
 
 ## 6. Studi di robustezza
@@ -793,6 +827,66 @@ il buco (fino a 0.068 singolo, 28% dei ricordi > 0.05 a f=0.75); la protetta
 e' invariante per costruzione (0 esatto, verificato). Dati e figura
 (`assoc_1000.csv/.md`, `fig13_assoc.png`) versionati in `output/output_test/`.
 
+### 6.10 Pareto continual learning con shift (`N=16`, `T=0.05`, seed 7, A=30 sx + B=60 dx)
+
+Stessa sequenza di cue, stessa metrica Q. Baseline ingenua (media mobile)
++ Replay (buffer FIFO) + EWC-lite (forma chiusa sul campo con decadimento
+online `gamma=0.9`; `eta=0.1` come l'ingenua per confronto fair).
+
+| modello | max degr | medio | distrutti | Q vecchie | Q nuove | costo extra |
+|---|---|---|---|---|---|---|
+| ingenua | 0.0462 | 0.0172 | 13/30 | 0.8350 | 0.8316 | 0 KB |
+| replay K10 B30 (FIFO corto) | 0.0402 | 0.0136 | 12/30 | 0.8387 | 0.8287 | 60 KB |
+| replay K10 B200 (tiene tutto) | 0.0312 | 0.0100 | 9/30 | 0.8422 | 0.8327 | 180 KB |
+| replay K20 B200 | 0.0299 | 0.0085 | 8/30 | 0.8437 | 0.8346 | 180 KB |
+| ewc lam=0.1 | 0.0239 | 0.0054 | 3/30 | 0.8468 | 0.8364 | 4 KB |
+| ewc lam=0.2 | 0.0172 | 0.0026 | 0/30 | 0.8496 | 0.8392 | 4 KB |
+| ewc lam=0.5 | 0.0104 | 0.0006 | 0/30 | 0.8516 | 0.8426 | 4 KB |
+| ewc lam=1.0 | 0.0081 | 0.0001 | 0/30 | 0.8521 | 0.8447 | 4 KB |
+| **protetta** | **0.0** | 0.0 | **0/30** | — | — | 4 campi/slot |
+
+Lettura onesta: (i) senza shift tutti degradano poco (campi ~97% simili) —
+lo shift e' necessario per separare i metodi; (ii) EWC-lite ben tarato
+(`lam=0.2-1.0`, `eta=0.1`) arriva a **0 distrutti** con residuo max ~0.008
+e impara B *meglio* dell'ingenua (Q nuove 0.8447 vs 0.8316) a 4 KB:
+baseline forte, non strawman; (iii) Replay aiuta solo se il buffer trattiene
+tutto (FIFO corto dimentica A dopo lo shift — stesso costo lineare degli
+slot); (iv) la protetta vince sulla **garanzia strutturale** (0 esatto),
+non sul margine: EWC si avvicina statisticamente ma senza garanzia.
+`lam=0` coincide con l'ingenua per costruzione (sanity check nei test).
+Dati e figura versionati (`fase15_cl_pareto.csv/.md`, `fig15_cl_pareto.png`).
+
+### 6.11 Plasticita' (`N=16`, `T=0.05`, seed 7)
+
+| n richieste | certificati | tasso | Q media | ms/ricordo | memoria |
+|---|---|---|---|---|---|
+| 50 | 50 | 1.000 | 0.9479 | 2.13 | 400 KB |
+| 100 | 100 | 1.000 | 0.9483 | 1.95 | 800 KB |
+| 200 | 200 | 1.000 | 0.9492 | 1.87 | 1600 KB |
+| 400 | 400 | 1.000 | 0.9488 | 1.87 | 3200 KB |
+| 800 | 800 | 1.000 | 0.9488 | 1.96 | 6400 KB |
+
+Regime a memoria limitata (`rifiuta`, 800 richieste): cap 100 →
+memorizzati 100 (copertura 0.125, Q 0.9483); cap 200 → 200 (0.250, Q 0.9492).
+Lettura onesta ("gabbia dorata" quantificata): Q piatta, costo lineare
+(~2 ms/ricordo, 8 KB/slot a N=16); il gate in regime facile non filtra
+(tasso 1.0 anche con bump 3-8) — la saturazione emerge come rifiuto per
+capacita', non come degrado. Dati e figura versionati
+(`fase15_plasticita.csv/.md`, `fig16_plasticita.png`).
+
+### 6.12 OOD con retrieval (`N=16`, `T=0.05`, seed 7)
+
+Retrieval = MSE sulla parte visibile (mai oracolo), completamento `residuo`
+col prior recuperato. Mix A+B: estremi perfetti (alpha=0→B margine 4e7,
+alpha=1→A margine 1e5), centro ambiguo (alpha=0.5→B margine 0.16,
+alpha=0.75→A margine 6e-4) ma `q_vs_mix` resta 0.83-0.88 ovunque.
+Rumore: accuratezza retrieval 1.0 → 0.25 → 0.125 → 0.125 per
+rumore 0 → 0.5 → 1.0 → 2.0.
+Lettura onesta (risultato negativo pubblicabile): il retrieval e' exact-match
+in-distribution e fragile al rumore; sui mix composizionali il sistema
+**completa, non ragiona** — produce sempre un output plausibile col prior
+recuperato. Dati e figura versionati (`fase15_ood.csv/.md`, `fig17_ood.png`).
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
@@ -835,6 +929,22 @@ e' invariante per costruzione (0 esatto, verificato). Dati e figura
   stazionaria (pooling) ma e' accoppiato alla composizione del set — la
   protetta scambia qualita' media con invarianza. Numeri non confrontabili
   con neurobiologia.
+- **Fase 15 (CL)**: `ReteEWC` e' un analogo concettuale in linguaggio di
+  campo (forma chiusa + importanza `r^2` con decadimento), non l'EWC su
+  gradienti di una rete torch — il confronto e' mele-con-mele sulla stessa
+  Q, non una rivendicazione contro il CL neurale. Senza shift di classe
+  tutti i metodi degradano poco (campi ~97% simili). EWC-lite ben tarato
+  arriva a 0 distrutti (residuo ~0.008): la protetta vince sulla garanzia,
+  non sul margine.
+- **Fase 15 (plasticita')**: in regime facile il gate non filtra mai
+  (tasso 1.0 fino a 800) — nessuna saturazione osservata senza vincolo di
+  capacita'; il costo dello zero-forgetting e' memoria lineare + copertura
+  che crolla a memoria limitata (12.5% con cap 100 su 800).
+- **Fase 15 (OOD)**: retrieval MSE fragile (accuracy 1.0→0.125 con rumore);
+  cue composizionali ambigue al centro (margine 6e-4); il completamento non
+  e' ragionamento. Bug trovato e corretto durante gli smoke: gli id del set
+  B sovrascrivevano A senza offset (slot chiave su id) — ora offset
+  espliciti + test di non-collisione implicito (estremi mix corretti).
 
 ---
 
