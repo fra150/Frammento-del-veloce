@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
-![coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-96_passed-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-108_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -47,27 +47,29 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 Framento del veloce/
 ├── src/
 │   ├── __init__.py        # export unificati Param / Params + gf + bio
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | fase15 | all
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | fase15 | fase16 | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
 │   ├── rete_frammento.py  # rete che non distrugge: nucleo frozen + slot + test 1000 + richiamo associativo
 │   ├── fase15.py          # prove referee: baseline CL (Replay/EWC-lite) + plasticita' + retrieval OOD
+│   ├── fase16.py          # sonno (gist) + eviction + transfer BWT/FWT + retrieval repair
 │   ├── confronto_bio.py   # coerenza LFP/theta-gamma + confronto spettrale onesto
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 96 test (90 fast + 6 slow con --run-slow)
+├── tests/                 # 108 test (102 fast + 6 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
 │   ├── test_rete_1000.py  # 9 test rete che non distrugge (8 fast + 1 slow full-1000)
 │   ├── test_rete_assoc.py # 8 test richiamo associativo (7 fast + 1 slow shift di classe)
 │   ├── test_fase15.py     # 11 test CL/shift + plasticita' + retrieval OOD (fast)
+│   ├── test_fase16.py     # 12 test sonno/eviction/transfer/retrieval repair (fast)
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
 │   ├── test_bio_fase12.py # 3 test pipeline trend/permutazione (sintetico + matrice reale)
 │   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
 │   └── ...
 ├── output/                # PNG/CSV/md generati (ignorati, TRANNE output_test versionato)
-│   └── output_test/       # stress 500 + rete 1000 + assoc + fase15: CSV + pannelli + md (push su GitHub)
+│   └── output_test/       # stress 500 + rete 1000 + assoc + fase15 + fase16: CSV + pannelli + md (push su GitHub)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
 ├── run.py                 # avvio rapido: python run.py [all]
 ├── pyproject.toml         # marker slow + config coverage
@@ -87,6 +89,7 @@ Framento del veloce/
 | `stress_500.py` | stress test domande g0->gf: `genera_domande` (bump casuali + repliche ogni 25), `interroga` (catena massa/qualita'/novita'/quiete/cert/cache condivisa), `esegui` (CSV + md + 2 pannelli in `output/output_test/`) |
 | `rete_frammento.py` | rete che non distrugge: `ReteFrammento` (nucleo frozen + slot isolati + scrittura solo via gf + espandi/rifiuta), `ReteIngenuaCondivisa` (baseline P condiviso che deriva), `genera_cue` (cue indipendenti senza repliche), `esegui_test_1000` (certifica n_cert, impara n_nuove, ri-testa), `salva_report_r1000` (CSV + md + fig11); richiamo associativo: `cue_parziale` (blocco/casuale + rumore), `ricostruisci_associativo` (residuo/gx), `esegui_test_associativo` (shift di classe A->B), `salva_report_assoc` (CSV + md + fig13) |
 | `fase15.py` | prove referee (Fase 15): `ReteReplay` (rehearsal con buffer FIFO), `ReteEWC` (EWC-lite in forma chiusa sul campo, analogo concettuale con decadimento online), `esegui_confronto_cl` (stessa sequenza cue, con `shift` di classe) + `sweep_pareto_cl`/`salva_report_cl` (CSV + md + fig15); `misura_plasticita`/`salva_report_plasticita` (tasso cert, Q, ms/ricordo, memoria, fig16); retrieval OOD: `seleziona_prior` (MSE sul visibile) + `test_ood_mix_retrieval`/`test_ood_rumore_retrieval`/`salva_report_ood` (CSV + md + fig17) |
+| `fase16.py` | Fase 16 (sonno + dimenticare + transfer + repair): `sonno`/`distilla_gist` (gist = media Fx, slot intatti) + `valuta_sonno_mix`/`rumore`/`salva_report_sonno` (fig18); `evici_slot` (eta/q/uso) + `esegui_eviction_study`/`salva_report_eviction` (fig19); `misura_transfer` (BWT/FWT a 2 task) + `salva_report_transfer` (fig20); `seleziona_prior_validato` (fit->val) + `seleziona_prior_coarse_to_fine` + `valuta_retrieval_repair`/`salva_report_retrieval` (fig21) |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -332,6 +335,9 @@ python -m pytest tests/test_rete_assoc.py -q
 # solo Fase 15 CL/plasticita'/OOD (11 fast, ~8 s, N=16, report in tmp dir)
 python -m pytest tests/test_fase15.py -q
 
+# solo Fase 16 sonno/eviction/transfer/repair (12 fast, ~8 s, N=16, report in tmp dir)
+python -m pytest tests/test_fase16.py -q
+
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
 
@@ -354,11 +360,14 @@ deterministica + protetta invariante + condivisa accoppiata al set,
 CL con shift (protetta 0 vs ingenua che degrada, EWC lam=0 = ingenua,
 EWC tarato che riduce, replay con buffer grande meglio del FIFO corto),
 plasticita' lineare + rifiuta/copertura, retrieval esatto in-distribution
-e fragile al rumore + mix che recupera il lato giusto agli estremi.
-Totale **96 test**
-(90 fast + 6 slow), coverage **81%** sul full run
+e fragile al rumore + mix che recupera il lato giusto agli estremi,
+sonno che non tocca gli slot + eviction misurata + BWT/FWT + retrieval
+in validazione fit->val.
+Totale **108 test**
+(102 fast + 6 slow), coverage **83%** sul full run
 (`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
 `frammento_gf.py` 73%, `rete_frammento.py` 69%, `fase15.py` 85%,
+`fase16.py` 97%,
 `stress_500.py` 34% — gli script full girano fuori CI).
 
 ---
@@ -638,6 +647,32 @@ righe = sweep_pareto_cl(n_cert=30, n_nuove=60, N=16, T=0.05, seed=7, shift=True)
 print(righe[0])
 ```
 
+### 5.11 Fase 16 — sonno + dimenticare + transfer + repair
+
+```bash
+# Sonno (gist) + eviction + BWT/FWT + retrieval repair (N=16, ~1 min)
+python -m src fase16 --n-cert 30 --n-nuove 60 --N 16 --T 0.05 --seed 7
+```
+
+Sonno offline (`sonno`/`distilla_gist`: gist = media degli Fx, verifica
+hash slot + checksum nucleo prima/dopo); eviction esplicita
+(`evici_slot` eta/q/uso, mai sovrascrittura); transfer standard a 2 task
+(`misura_transfer`: BWT/FWT); retrieval repair (`seleziona_prior_validato`
+fit->val + `seleziona_prior_coarse_to_fine`). Output in
+`output/output_test/`: `fase16_sonno.csv/.md` + `fig18_sonno.png`,
+`fase16_eviction.csv/.md` + `fig19_eviction.png`,
+`fase16_transfer.csv/.md` + `fig20_transfer.png`,
+`fase16_retrieval.csv/.md` + `fig21_retrieval.png`.
+
+Uso da codice:
+
+```python
+from src.fase16 import sonno, esegui_eviction_study, misura_transfer
+from src.fase16 import valuta_retrieval_repair
+s = sonno(rete)  # {"gist": ..., "intatto": True, ...}
+print(s["intatto"], s["dettagli"]["std_pixel"])
+```
+
 ---
 
 ## 6. Studi di robustezza
@@ -887,6 +922,76 @@ in-distribution e fragile al rumore; sui mix composizionali il sistema
 **completa, non ragiona** — produce sempre un output plausibile col prior
 recuperato. Dati e figura versionati (`fase15_ood.csv/.md`, `fig17_ood.png`).
 
+### 6.13 Sonno (gist offline, `N=16`, `T=0.05`, seed 7, soglia margine 0.05)
+
+Gist = media degli Fx certificati (8 slot: 4 sx + 4 dx), distillato in
+lettura sola (hash slot + checksum nucleo identici prima/dopo, verificato).
+Politica: se margine < 0.05 usa il gist, altrimenti il vincitore.
+
+| alpha | vincitore | margine | q winner | q gist | q scelta |
+|---|---|---|---|---|---|
+| 0.00 | B | 4.36e+07 | 0.8324 | 0.8707 | 0.8324 |
+| 0.25 | B | 2.14e-01 | 0.8623 | 0.9092 | 0.8623 |
+| 0.50 | B | 1.59e-01 | 0.8775 | 0.9296 | 0.8775 |
+| 0.75 | A | 6.53e-04 | 0.8738 | 0.9190 | 0.9190 |
+| 1.00 | A | 1.44e+05 | 0.8542 | 0.8878 | 0.8542 |
+
+Rumore (8 cue, q_mask media winner vs gist): 0.0 -> 0.8418 vs 0.8655
+(acc 1.0); 0.5 -> 0.8105 vs 0.8262 (acc 0.25); 1.0 -> 0.7303 vs 0.7389
+(acc 0.125); 2.0 -> 0.5262 vs 0.5288 (acc 0.125).
+Lettura onesta: il gist alza q di ~+0.04 su mix e ~+0.01-0.02 col rumore,
+ma e' pooling sfocato (media), non ragionamento — vince dove il mix stesso
+e' una media. Non risolve l'exact-match (accuracy resta 0.125 al rumore
+forte). Dati e figura versionati (`fase16_sonno.csv/.md`, `fig18_sonno.png`).
+
+### 6.14 Dimenticare apposta (`n=40`, `N=16`, seed 7)
+
+Eviction = cancellazione (i rimasti restano bit-identici, zero degrado).
+
+| politica | k | rimasti | copertura | Q rimasti | memoria | risparmio |
+|---|---|---|---|---|---|---|
+| eta | 10/20/30 | 30/20/10 | 0.75/0.50/0.25 | 0.9469/0.9465/0.9457 | 240/160/80 KB | 80/160/240 KB |
+| q (deboli prima) | 10/20/30 | 30/20/10 | 0.75/0.50/0.25 | 0.9503/0.9531/0.9559 | 240/160/80 KB | 80/160/240 KB |
+| uso (proxy id%3) | 10/20/30 | 30/20/10 | 0.75/0.50/0.25 | 0.9465/0.9476/0.9476 | 240/160/80 KB | 80/160/240 KB |
+
+Base senza eviction: 40 slot, Q 0.9472, 320 KB. La politica per-Q alza la
+media dei rimasti (potatura dei deboli, +0.009 a k=30); eta/uso la lasciano
+piatta. Dati e figura versionati (`fase16_eviction.csv/.md`,
+`fig19_eviction.png`).
+
+### 6.15 Transfer standard BWT/FWT (`N=16`, seed 7, A=30 sx + B=60 dx)
+
+| modello | R_AA | R_AB | R_BB | R_B0 | BWT | FWT |
+|---|---|---|---|---|---|---|
+| protetta | 0.8522 | 0.8522 | 0.8494 | 0.8494 | 0.0000 | 0.0000 |
+| ingenua | 0.8309 | 0.8350 | 0.8316 | 0.8335 | +0.0041 | -0.0019 |
+| replay K10 B200 | 0.8357 | 0.8422 | 0.8327 | 0.8370 | +0.0065 | -0.0043 |
+| ewc lam=0.5 | 0.8472 | 0.8516 | 0.8426 | 0.8447 | +0.0044 | -0.0020 |
+
+Lettura onesta: in media-Q il BWT e' ~0 per tutti (nessun forgetting medio
+rilevabile) — la metrica media nasconde i casi peggiori, dove la condivisa
+distrugge davvero (13/30 in §6.10, max degr 0.046). La protetta e' l'unica
+con BWT=FWT=0 esatti per costruzione (isolamento, non transfer). FWT ~0
+ovunque: A non aiuta B. Dati e figura versionati
+(`fase16_transfer.csv/.md`, `fig20_transfer.png`).
+
+### 6.16 Retrieval repair (`N=16`, seed 7, k=3, val 20% del visibile)
+
+| rumore | base | validato | coarse-to-fine |
+|---|---|---|---|
+| 0.00 | 1.000 | 0.250 | 0.250 |
+| 0.50 | 0.250 | 0.250 | 0.250 |
+| 1.00 | 0.125 | 0.250 | 0.250 |
+| 2.00 | 0.125 | 0.250 | 0.250 |
+
+Gara tra top-3 prior in validazione fit->val (mai l'occulto).
+Lettura onesta (negativo con sfumatura): il repair raddoppia l'accuracy al
+rumore forte (0.125 -> 0.250) ma crolla sul pulito (1.0 -> 0.25) — tenere da
+parte il 20% del visibile toglie potere discriminante dove i campi sono
+~97% simili. Coarse-to-fine identico al validato (la scrematura grossolana
+non aggiunge). Il retrieval resta fragile. Dati e figura versionati
+(`fase16_retrieval.csv/.md`, `fig21_retrieval.png`).
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
@@ -945,6 +1050,18 @@ recuperato. Dati e figura versionati (`fase15_ood.csv/.md`, `fig17_ood.png`).
   e' ragionamento. Bug trovato e corretto durante gli smoke: gli id del set
   B sovrascrivevano A senza offset (slot chiave su id) — ora offset
   espliciti + test di non-collisione implicito (estremi mix corretti).
+- **Fase 16 (sonno)**: il gist alza q (+0.04 su mix, +0.01-0.02 col rumore)
+  ma e' pooling sfocato, non ragionamento; non risolve l'exact-match.
+  Garanzia verificata: slot + nucleo bit-identici dopo il sonno.
+- **Fase 16 (eviction)**: cancellazione misurata, rimasti invarianti; la
+  politica per-Q pota i deboli (Q +0.009), eta/uso lasciano Q piatta.
+  Proxy d'uso `id%3` documentato come proxy, non misura reale.
+- **Fase 16 (transfer)**: BWT/FWT medi ~0 per tutti — la media-Q non vede il
+  forgetting che il max/degrado (§6.10) mostra; unico segnale strutturale
+  resta protetta = 0 esatto vs condivise con distrutti > 0.
+- **Fase 16 (retrieval)**: validazione fit->val raddoppia al rumore forte
+  ma dimezza sul pulito; coarse-to-fine non aggiunge. Retrieval ancora
+  fragile — negativo onesto.
 
 ---
 

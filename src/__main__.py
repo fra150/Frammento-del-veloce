@@ -221,6 +221,36 @@ def build_parser():
     aF15.add_argument("--out", type=str, default="")
     aF15.set_defaults(func=cmd_fase15)
 
+    def cmd_fase16(args):
+        from .fase16 import (valuta_sonno_mix, valuta_sonno_rumore,
+                             salva_report_sonno, esegui_eviction_study,
+                             salva_report_eviction, misura_transfer,
+                             salva_report_transfer, valuta_retrieval_repair,
+                             salva_report_retrieval)
+        out = args.out or None
+        mix = valuta_sonno_mix(N=args.N, T=args.T, seed=args.seed)
+        rum = valuta_sonno_rumore(N=args.N, T=args.T, seed=args.seed)
+        salva_report_sonno(mix, rum, out_dir=out, N=args.N, T=args.T,
+                           seed=args.seed)
+        ev = esegui_eviction_study(n=40, N=args.N, T=args.T, seed=args.seed)
+        salva_report_eviction(ev, out_dir=out, N=args.N, T=args.T,
+                              seed=args.seed, n=40)
+        tr = misura_transfer(n_cert=args.n_cert, n_nuove=args.n_nuove,
+                             N=args.N, T=args.T, seed=args.seed)
+        salva_report_transfer(tr, out_dir=out)
+        rr = valuta_retrieval_repair(N=args.N, T=args.T, seed=args.seed)
+        salva_report_retrieval(rr, out_dir=out, N=args.N, T=args.T,
+                               seed=args.seed)
+
+    aF16 = sub.add_parser("fase16", help="Sonno + eviction + transfer + retrieval repair")
+    aF16.add_argument("--n-cert", type=int, default=30)
+    aF16.add_argument("--n-nuove", type=int, default=60)
+    aF16.add_argument("--N", type=int, default=16)
+    aF16.add_argument("--T", type=float, default=0.05)
+    aF16.add_argument("--seed", type=int, default=7)
+    aF16.add_argument("--out", type=str, default="")
+    aF16.set_defaults(func=cmd_fase16)
+
     aA = sub.add_parser("all", help="2d + 1d + demo in sequenza")
     aA.add_argument("--N", type=int, default=96)
     aA.add_argument("--T", type=float, default=0.30)
