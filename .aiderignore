@@ -1,0 +1,36 @@
+# .aiderignore — file che Aider deve escludere dal contesto.
+# Sintassi gitignore. Esclusi: binari, output pesanti, documenti solo-locali.
+
+# Controllo versione e cache
+.git/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage*
+.pytest_cache/
+
+# Output simulazioni: figure, dati binari, coverage (i .md/.csv restano leggibili)
+output/*.png
+output/output_test/*.png
+output/output_test/*.npy
+output/coverage.xml
+
+# LaTeX: solo sorgenti .tex utili; mai build, mai PDF
+latex/*.pdf
+latex/*.aux
+latex/*.log
+latex/*.out
+latex/*.toc
+latex/*.synctex.gz
+latex/*.fls
+latex/*.fdb_latexmk
+Frammento_del_veloce_IT.pdf
+
+# Documenti solo-locali (con note operative, mai nel contesto condiviso)
+diario.md
+REPO_MAP.md
+frammetoveloce.md
+
+# Configurazioni locali di altri tool
+.opencode/

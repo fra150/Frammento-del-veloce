@@ -1,0 +1,24 @@
+# Aider — configurazione del repository Frammento del Veloce
+# Uso: aider legge automaticamente questo file dalla root del repo.
+# Regola del repo: MAI commit/push automatici (solo su richiesta esplicita).
+
+# Modello: lasciare commentato per usare il default di aider.
+# model:
+
+# Comportamento git: niente commit automatici, niente push.
+auto-commits: false
+dirty-commits: false
+git-commit-verify: true
+commit-prompt: "Descrivi in italiano in una riga: fase, cosa, numeri di test"
+
+# Qualita' del contesto e dell'output.
+dark-mode: true
+pretty: true
+stream: true
+map-tokens: 2048
+map-refresh: files
+restore-chat-history: true
+show-diffs: true
+
+# Sicurezza: chiede conferma prima di eseguire comandi shell.
+confirm-ask: true
