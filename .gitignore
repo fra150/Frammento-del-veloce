@@ -27,6 +27,6 @@ __pycache__/
 .coverage*
 output/coverage.xml
 diario.md
-
+REPO_MAP.md
 # Configurazione locale OpenCode
 .opencode/

@@ -251,6 +251,28 @@ def build_parser():
     aF16.add_argument("--out", type=str, default="")
     aF16.set_defaults(func=cmd_fase16)
 
+    def cmd_fase16b(args):
+        from .fase16 import (valuta_retrieval_v2,
+                             salva_report_retrieval_v2,
+                             misura_transfer_v2,
+                             salva_report_transfer_v2)
+        out = args.out or None
+        rr = valuta_retrieval_v2(N=args.N, T=args.T, seed=args.seed)
+        salva_report_retrieval_v2(rr, out_dir=out, N=args.N, T=args.T,
+                                  seed=args.seed)
+        tr = misura_transfer_v2(n_cert=args.n_cert, n_nuove=args.n_nuove,
+                                N=args.N, T=args.T, seed=args.seed)
+        salva_report_transfer_v2(tr, out_dir=out)
+
+    aF16b = sub.add_parser("fase16b", help="Retrieval v2 (pesi) + transfer v2 (fedelta'/zero-shot)")
+    aF16b.add_argument("--n-cert", type=int, default=30)
+    aF16b.add_argument("--n-nuove", type=int, default=60)
+    aF16b.add_argument("--N", type=int, default=16)
+    aF16b.add_argument("--T", type=float, default=0.05)
+    aF16b.add_argument("--seed", type=int, default=7)
+    aF16b.add_argument("--out", type=str, default="")
+    aF16b.set_defaults(func=cmd_fase16b)
+
     aA = sub.add_parser("all", help="2d + 1d + demo in sequenza")
     aA.add_argument("--N", type=int, default=96)
     aA.add_argument("--T", type=float, default=0.30)

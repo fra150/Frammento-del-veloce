@@ -44,10 +44,12 @@ from .rete_frammento import (
     cue_parziale,
     genera_cue,
     ricostruisci_associativo,
+    _bump_iniziale,
     _qualita,
     _q_regione,
 )
 from .fase15 import seleziona_prior
+from .frammento_2d import Param, essenza, simula
 
 OUT_DIR_DEFAULT = _os.path.join(
     _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
@@ -821,4 +823,386 @@ def salva_report_retrieval(righe: list[dict], out_dir: str | None = None,
     fig.savefig(ffig, dpi=120)
     plt.close(fig)
     print(f"retrieval: {len(righe)} rumori | fig {ffig}")
+    return {"csv": fp_csv, "md": fp_md, "fig": ffig}
+
+
+# ===========================================================================
+# FASE 16-bis — retrieval v2 + transfer v2
+# ---------------------------------------------------------------------------
+# Principio (diario 23/09, "per il 3% non perdere il 97%"): il 97% di modo
+# comune (essenza) e' il TESORO — qualita' e stabilita' della ricostruzione;
+# il 3% di residuo discriminante e' l'ETICHETTA — serve solo a decidere
+# *quale* ricordo. Due corsie rigide:
+#   corsia scelta (3%): MSE pesata sulla varianza inter-slot -> best_id;
+#   corsia ricostruzione (97%): campo intero col Fo certificato, cue e vis
+#     ORIGINALI. Il v2 non tocca mai la ricostruzione: se la qualita' q_v2
+#     scende sotto q_base, il v2 e' bocciato anche con accuracy migliore.
+# Nota negativa documentata: la sfocatura (denoise) e' stata provata e
+# SCARTATA — a N=16 il bump e' largo ~0.8 pixel (la media 3x3 cancella il
+# segnale stesso) e sul cue parziale trascina gli zeri del buco nei pixel
+# visibili al bordo. I pesi fanno il lavoro senza questi danni.
+# ===========================================================================
+def essenza_campo(N: int) -> np.ndarray:
+    """Essenza per N (deterministica, indipendente dal seed della cue)."""
+    return np.asarray(essenza(Param(N=int(N))), dtype=float)
+
+
+def pesi_varianza(rete: ReteFrammento,
+                  vis: np.ndarray) -> tuple[np.ndarray, bool]:
+    """Peso per pixel = varianza inter-slot del residuo, media 1 sui visibili.
+
+    I pixel dove i ricordi differiscono davvero contano di piu'; lo sfondo
+    comune (uguale per tutti) conta meno. Fallback uniforme se varianza ~0
+    (slot quasi identici). Ritorna (pesi, fallback).
+    """
+    vis_a = np.asarray(vis, dtype=bool)
+    ids = sorted(rete.slot.keys())
+    res = np.stack([np.asarray(rete.slot[i]["Fx"], dtype=float)
+                    - np.asarray(rete.slot[i]["ess"], dtype=float)
+                    for i in ids], axis=0)
+    var = np.var(res, axis=0)
+    m = float(var[vis_a].mean()) if vis_a.any() else 0.0
+    if m < 1e-18:
+        return np.ones_like(var), True
+    return var / m, False
+
+
+def seleziona_prior_v2(rete: ReteFrammento, cue: np.ndarray,
+                       vis: np.ndarray, ess: np.ndarray | None = None) -> dict:
+    """Scelta pesata: MSE sui campi con pesi di varianza inter-slot.
+
+    I pixel dove i ricordi differiscono contano di piu'; lo sfondo comune
+    (uguale per tutti, ~97% del campo) conta meno. `ess` e' accettata per
+    compatibilita' ma non sposta il ranking (sottrarre il modo comune a
+    entrambi i lati e' un'identita'): il lavoro lo fanno i pesi.
+    A rumore zero il vero id ha score esattamente 0 -> exact-match garantito
+    per costruzione (il 97% e' al sicuro per teorema).
+    Stesse chiavi di `seleziona_prior` + `fallback_pesi`.
+    """
+    cue_a = np.asarray(cue, dtype=float)
+    vis_a = np.asarray(vis, dtype=bool)
+    w, fb = pesi_varianza(rete, vis_a)
+    scored: list[tuple[float, int]] = []
+    for cid, rec in rete.slot.items():
+        d = cue_a[vis_a] - np.asarray(rec["Fx"], dtype=float)[vis_a]
+        scored.append((float(np.mean(w[vis_a] * d ** 2)), int(cid)))
+    scored.sort()
+    best_mse, best_id = scored[0]
+    second_mse = scored[1][0] if len(scored) > 1 else float("nan")
+    margine = ((second_mse - best_mse) / (best_mse + 1e-12)
+               if len(scored) > 1 else 0.0)
+    return {"best_id": int(best_id), "best_mse": float(best_mse),
+            "second_mse": float(second_mse), "margine": float(margine),
+            "n_candidati": len(scored), "fallback_pesi": bool(fb)}
+
+
+def valuta_retrieval_v2(N: int = 16, T: float = 0.05, seed: int = 7,
+                        rumori=(0.0, 0.5, 1.0, 2.0),
+                        frazione: float = 0.5,
+                        soglia_margine: float = 0.05) -> list[dict]:
+    """Base vs v2 a rumore crescente, con guardia di qualita'.
+
+    Ricostruzione SEMPRE a campo intero col prior certificato (corsia 97%,
+    cue/vis originali); il v2 cambia solo la scelta (+ gist se ambiguo).
+    Criterio doppio non negoziabile: acc_v2(0.0) deve restare 1.0 E
+    acc_v2(rumore) deve superare acc_base. Guardia: q_v2 >= q_base,
+    altrimenti il v2 ha perso il 97% (bocciato).
+    """
+    cue_list = genera_cue(8, seed=seed, amp_range=(3.0, 8.0))
+    rete = ReteFrammento(N=N, T=T)
+    for c in cue_list:
+        rete.impara(c)
+    ids = sorted(rete.slot.keys())
+    g = sonno(rete)
+    gist = np.asarray(g["gist"])
+    assert g["intatto"], "sonno ha toccato gli slot"
+    dx = 1.0 / N
+    righe: list[dict] = []
+    for rum in rumori:
+        ob = ov = ug = 0
+        qb: list[float] = []
+        qv: list[float] = []
+        for cid in ids:
+            rec = rete.slot[cid]
+            cp, vis = cue_parziale(rec["Fx"], frazione=frazione,
+                                   tipo="blocco", rumore=float(rum),
+                                   seed=cid * 13 + 1)
+            b = seleziona_prior(rete, cp, vis)
+            v = seleziona_prior_v2(rete, cp, vis)
+            ob += int(b["best_id"] == cid)
+            ov += int(v["best_id"] == cid)
+            Frb = ricostruisci_associativo(cp, vis,
+                                           rete.slot[b["best_id"]]["Fo"],
+                                           dx, modo="residuo")
+            uso_g = bool(v["margine"] < float(soglia_margine))
+            prior_v = gist if uso_g else rete.slot[v["best_id"]]["Fo"]
+            Frv = ricostruisci_associativo(cp, vis, prior_v, dx,
+                                           modo="residuo")
+            qb.append(_q_regione(Frb, rec["Fx"], ~vis))
+            qv.append(_q_regione(Frv, rec["Fx"], ~vis))
+            ug += int(uso_g)
+        n = max(1, len(ids))
+        righe.append({"rumore": float(rum),
+                      "acc_base": float(ob / n),
+                      "acc_v2": float(ov / n),
+                      "q_base_media": float(np.mean(qb)) if qb else 0.0,
+                      "q_v2_media": float(np.mean(qv)) if qv else 0.0,
+                      "fraz_gist": float(ug / n)})
+    return righe
+
+
+def salva_report_retrieval_v2(righe: list[dict], out_dir: str | None = None,
+                              N: int = 16, T: float = 0.05, seed: int = 7) -> dict:
+    """CSV + md + fig22 (accuracy base vs v2 + guardia di qualita')."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if out_dir is None:
+        out_dir = OUT_DIR_DEFAULT
+    _os.makedirs(out_dir, exist_ok=True)
+    fp_csv = _os.path.join(out_dir, "fase16b_retrieval_v2.csv")
+    with open(fp_csv, "w", newline="") as f:
+        w = _csv.writer(f)
+        w.writerow(["rumore", "acc_base", "acc_v2", "q_base", "q_v2",
+                    "fraz_gist"])
+        for r in righe:
+            w.writerow([f"{r['rumore']:.2f}", f"{r['acc_base']:.3f}",
+                        f"{r['acc_v2']:.3f}", f"{r['q_base_media']:.6f}",
+                        f"{r['q_v2_media']:.6f}", f"{r['fraz_gist']:.3f}"])
+    ok_acc = righe[0]["acc_v2"] == 1.0 if righe else False
+    ok_rum = any(r["acc_v2"] > r["acc_base"] for r in righe) if righe else False
+    ok_q = all(r["q_v2_media"] >= r["q_base_media"] - 1e-9 for r in righe)
+    verdetto = ("PROMOSSO" if (ok_acc and ok_rum and ok_q) else "BOCCIATO")
+    fp_md = _os.path.join(out_dir, "fase16b_retrieval_v2.md")
+    with open(fp_md, "w") as f:
+        f.write("# Fase 16-bis — Retrieval v2 (il 3% sceglie, il 97% resta)\n\n")
+        f.write(f"N={N} T={T} seed={seed} scelta=MSE pesata su varianza\n\n")
+        f.write("| rumore | acc base | acc v2 | q base | q v2 | fraz gist |\n")
+        f.write("|---|---|---|---|---|---|\n")
+        for r in righe:
+            f.write(f"| {r['rumore']:.2f} | {r['acc_base']:.3f} | "
+                    f"{r['acc_v2']:.3f} | {r['q_base_media']:.4f} | "
+                    f"{r['q_v2_media']:.4f} | {r['fraz_gist']:.2f} |\n")
+        f.write(f"\nDoppio criterio: acc_v2(0)==1.0 -> "
+                f"{'SI' if ok_acc else 'NO'}; acc_v2>base da qualche parte -> "
+                f"{'SI' if ok_rum else 'NO'}; guardia q_v2>=q_base ovunque -> "
+                f"{'SI' if ok_q else 'NO'}.\n")
+        f.write(f"**Verdetto: {verdetto}** (ricostruzione sempre a campo "
+                f"intero col prior certificato).\n")
+    fig, ax = plt.subplots(1, 2, figsize=(12.0, 4.5))
+    xs = [r["rumore"] for r in righe]
+    ax[0].plot(xs, [r["acc_base"] for r in righe], "o-", label="base")
+    ax[0].plot(xs, [r["acc_v2"] for r in righe], "s-", label="v2 (pesi)")
+    ax[0].set_xlabel("rumore (x std)")
+    ax[0].set_ylabel("accuratezza retrieval")
+    ax[0].set_title("A) Scelta: base vs v2 (doppio criterio)")
+    ax[0].legend(fontsize=8)
+    ax[0].grid(alpha=0.3)
+    ax[1].plot(xs, [r["q_base_media"] for r in righe], "o-", label="q base")
+    ax[1].plot(xs, [r["q_v2_media"] for r in righe], "s-", label="q v2")
+    ax[1].set_xlabel("rumore (x std)")
+    ax[1].set_ylabel("q_mask media (ricostruzione)")
+    ax[1].set_title("B) Guardia: il 97% non deve scendere")
+    ax[1].legend(fontsize=8)
+    ax[1].grid(alpha=0.3)
+    fig.suptitle(f"Retrieval v2 (N={N}, seed={seed}) — {verdetto}",
+                 fontsize=13)
+    fig.tight_layout()
+    ffig = _os.path.join(out_dir, "fig22_retrieval_v2.png")
+    fig.savefig(ffig, dpi=120)
+    plt.close(fig)
+    print(f"retrieval-v2: {len(righe)} rumori | {verdetto} | fig {ffig}")
+    return {"csv": fp_csv, "md": fp_md, "fig": ffig, "verdetto": verdetto}
+
+
+# ===========================================================================
+# Transfer v2: BWT su fedelta'-al-certificato + FWT zero-shot
+# ---------------------------------------------------------------------------
+# La Q misura distanza dall'essenza: il forgetting si muove ortogonale a
+# quel gradiente e la Q non lo vede. La fedelta' F misura distanza dallo
+# stato certificato: li' il forgetting e' visibile. FWT zero-shot misura
+# quanto A-aiuta-B senza addestrare su B (i condivisi possono vincere:
+# seconda faccia del trade-off pooling-vs-isolamento).
+# ===========================================================================
+def campo_vero_cue(cue: dict, N: int, T: float) -> tuple[np.ndarray, np.ndarray]:
+    """Campo vero di una cue (stessa sim di `impara`, senza memorizzare)."""
+    p = Param(N=int(N), seed=int(cue["seed_domanda"]),
+              gamma=float(cue["gamma"]))
+    es = essenza(p)
+    snap = simula(p, T=float(T), protocollo=cue["protocollo"],
+                  salva_ogni=10, stocastico=False,
+                  stato_iniziale={"Fx": _bump_iniziale(p, es, cue)})
+    return np.asarray(snap["Fx"][-1]), np.asarray(es)
+
+
+def fedelta_protetta(rete: ReteFrammento, cue_id: int) -> dict:
+    """Fedelta' al certificato: ri-simula e confronta i CAMPI (non la Q).
+
+    Atteso F=1.0 esatto (stesso seed, stesso path deterministico).
+    """
+    cid = int(cue_id)
+    rec = rete.slot[cid]
+    cue = rete.cue_note[cid]
+    Fx2, _ = campo_vero_cue(cue, rete.N, rete.T)
+    Fx0 = np.asarray(rec["Fx"], dtype=float)
+    return {"F": float(1.0 - np.linalg.norm(Fx2 - Fx0)
+                       / (np.linalg.norm(Fx0) + 1e-12)),
+            "max_abs_diff": float(np.max(np.abs(Fx2 - Fx0)))}
+
+
+def fedelta_condivisa(modello, cue_id: int) -> float:
+    """F = 1 - ||deriva||/||Fx_cert||. Nessuna sim: deriva=P-snapshot."""
+    rec = modello.record[int(cue_id)]
+    Fx0 = np.asarray(rec["Fx"], dtype=float)
+    deriva = np.asarray(modello.P - rec["P_snapshot"], dtype=float)
+    return float(1.0 - np.linalg.norm(deriva)
+                 / (np.linalg.norm(Fx0) + 1e-12))
+
+
+def misura_transfer_v2(n_cert: int = 30, n_nuove: int = 60,
+                       N: int = 16, T: float = 0.05, seed: int = 7,
+                       ewc_lam: float = 0.5) -> dict:
+    """BWT su fedelta' + FWT zero-shot (storia a due facce).
+
+    BWT_fid = media su A di (F_dopo_B - F_dopo_A): protetta 0 esatto,
+    condivise negative (il forgetting che la media-Q nasconde).
+    FWT_zero = q_mask su B con modello addestrato solo su A (cue mai viste,
+    prior da A): qui il pooling dei condivisi puo' battere l'isolamento.
+    """
+    A = genera_cue(int(n_cert), seed=seed, amp_range=(3.0, 8.0),
+                   regione="sinistra")
+    B = genera_cue(int(n_nuove), seed=seed + 1000, amp_range=(3.0, 8.0),
+                   regione="destra")
+    for k, c in enumerate(B):
+        c["id"] = int(n_cert) + k
+
+    mod = _nuovi_modelli(N, T, seed, ewc_lam)
+    idA: list[int] = []
+    for c in A:
+        r = mod["protetta"].impara(c)
+        for m in ("ingenua", "replay", "ewc"):
+            mod[m].impara(c)
+        if r["cert"]:
+            idA.append(r["id"])
+
+    def _F(modelli: dict, nome: str, ids: list[int]) -> list[float]:
+        out: list[float] = []
+        for i in ids:
+            if nome == "protetta":
+                out.append(fedelta_protetta(modelli[nome], i)["F"])
+            else:
+                out.append(fedelta_condivisa(modelli[nome], i))
+        return out
+
+    FAA = {m: _F(mod, m, idA) for m in mod}
+    QAA = {m: _qA_ricorda(mod[m], m, idA) for m in mod}
+    idB: list[int] = []
+    for c in B:
+        r = mod["protetta"].impara(c)
+        for m in ("ingenua", "replay", "ewc"):
+            mod[m].impara(c)
+        if r["cert"]:
+            idB.append(r["id"])
+    FAB = {m: _F(mod, m, idA) for m in mod}
+    QAB = {m: _qA_ricorda(mod[m], m, idA) for m in mod}
+
+    # zero-shot: modelli freschi addestrati solo su A, testati su B mai viste
+    mA = _nuovi_modelli(N, T, seed, ewc_lam)
+    for c in A:
+        for m in mA:
+            mA[m].impara(c)
+    dx = 1.0 / N
+    ess0 = np.asarray(mA["ingenua"].ess0, dtype=float)
+    veri_B: dict[int, np.ndarray] = {}
+    for c in B:
+        if c["id"] in idB:
+            FxV, _ = campo_vero_cue(c, N, T)
+            veri_B[int(c["id"])] = FxV
+    fwt: dict[str, list[float]] = {m: [] for m in mA}
+    for bid in idB:
+        FxV = veri_B[bid]
+        cp, vis = cue_parziale(FxV, frazione=0.5, tipo="blocco",
+                               rumore=0.0, seed=1000 + bid)
+        s = seleziona_prior_v2(mA["protetta"], cp, vis)
+        Fr = ricostruisci_associativo(cp, vis,
+                                      mA["protetta"].slot[s["best_id"]]["Fo"],
+                                      dx, modo="residuo")
+        fwt["protetta"].append(_q_regione(Fr, FxV, ~vis))
+        for m in ("ingenua", "replay", "ewc"):
+            prior = ess0 + np.asarray(mA[m].P, dtype=float)
+            Fr2 = ricostruisci_associativo(cp, vis, prior, dx,
+                                           modo="residuo")
+            fwt[m].append(_q_regione(Fr2, FxV, ~vis))
+
+    per: dict = {}
+    for m in mod:
+        a0 = np.asarray(FAA[m])
+        a1 = np.asarray(FAB[m])
+        n = min(a0.size, a1.size)
+        bwt_fid = float(np.mean(a1[:n] - a0[:n])) if n else 0.0
+        q0 = np.asarray(QAA[m])
+        q1 = np.asarray(QAB[m])
+        nq = min(q0.size, q1.size)
+        bwt_q = float(np.mean(q1[:nq] - q0[:nq])) if nq else 0.0
+        per[m] = {"BWT_fid": bwt_fid, "BWT_Q": bwt_q,
+                  "F_AA": float(np.mean(a0)) if a0.size else 0.0,
+                  "F_AB": float(np.mean(a1)) if a1.size else 0.0,
+                  "FWT_zero": float(np.mean(fwt[m])) if fwt[m] else 0.0}
+    return {"n_A": len(idA), "n_B": len(idB), "N": N, "T": T, "seed": seed,
+            "per_modello": per}
+
+
+def salva_report_transfer_v2(res: dict, out_dir: str | None = None) -> dict:
+    """CSV + md + fig23 (BWT su fedelta' + FWT zero-shot)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if out_dir is None:
+        out_dir = OUT_DIR_DEFAULT
+    _os.makedirs(out_dir, exist_ok=True)
+    pm = res["per_modello"]
+    fp_csv = _os.path.join(out_dir, "fase16b_transfer_v2.csv")
+    with open(fp_csv, "w", newline="") as f:
+        w = _csv.writer(f)
+        w.writerow(["modello", "F_AA", "F_AB", "BWT_fid", "BWT_Q",
+                    "FWT_zero"])
+        for m, v in pm.items():
+            w.writerow([m, f"{v['F_AA']:.6f}", f"{v['F_AB']:.6f}",
+                        f"{v['BWT_fid']:.6f}", f"{v['BWT_Q']:.6f}",
+                        f"{v['FWT_zero']:.6f}"])
+    fp_md = _os.path.join(out_dir, "fase16b_transfer_v2.md")
+    with open(fp_md, "w") as f:
+        f.write("# Fase 16-bis — Transfer v2 (fedelta' + zero-shot)\n\n")
+        f.write(f"A={res['n_A']} B={res['n_B']} N={res['N']} T={res['T']} "
+                f"seed={res['seed']}\n\n")
+        f.write("| modello | F_AA | F_AB | BWT_fid | BWT_Q | FWT_zero |\n")
+        f.write("|---|---|---|---|---|---|\n")
+        for m, v in pm.items():
+            f.write(f"| {m} | {v['F_AA']:.4f} | {v['F_AB']:.4f} | "
+                    f"{v['BWT_fid']:.4f} | {v['BWT_Q']:.4f} | "
+                    f"{v['FWT_zero']:.4f} |\n")
+        f.write("\nBWT_fid<0 = forgetting vero (vs certificato); BWT_Q ~0 "
+                "conferma che la media-Q non lo vede. FWT_zero = generalizza"
+                "zione in avanti su cue mai viste (qui i condivisi possono "
+                "vincere: seconda faccia del trade-off).\n")
+    nomi = list(pm.keys())
+    fig, ax = plt.subplots(1, 2, figsize=(11.0, 4.3))
+    ax[0].bar(nomi, [pm[m]["BWT_fid"] for m in nomi], color="#8b1e3f")
+    ax[0].axhline(0.0, color="k", lw=1)
+    ax[0].set_ylabel("BWT_fid (F dopo B - dopo A)")
+    ax[0].set_title("A) Backward su fedelta' (0 = zero forgetting)")
+    ax[0].grid(alpha=0.3, axis="y")
+    ax[1].bar(nomi, [pm[m]["FWT_zero"] for m in nomi], color="#1f4e79")
+    ax[1].set_ylabel("FWT_zero (q_mask su B mai viste)")
+    ax[1].set_title("B) Forward zero-shot (generalizzazione)")
+    ax[1].grid(alpha=0.3, axis="y")
+    fig.suptitle(f"Transfer v2 A->B (A={res['n_A']}, B={res['n_B']})",
+                 fontsize=13)
+    fig.tight_layout()
+    ffig = _os.path.join(out_dir, "fig23_transfer_v2.png")
+    fig.savefig(ffig, dpi=120)
+    plt.close(fig)
+    print(f"transfer-v2: A {res['n_A']} B {res['n_B']} | fig {ffig}")
     return {"csv": fp_csv, "md": fp_md, "fig": ffig}

@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
-![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-108_passed-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-84%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-116_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -47,7 +47,7 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 Framento del veloce/
 ├── src/
 │   ├── __init__.py        # export unificati Param / Params + gf + bio
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | fase15 | fase16 | all
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | fase15 | fase16 | fase16b | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
@@ -58,12 +58,13 @@ Framento del veloce/
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 108 test (102 fast + 6 slow con --run-slow)
+├── tests/                 # 116 test (110 fast + 6 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
 │   ├── test_rete_1000.py  # 9 test rete che non distrugge (8 fast + 1 slow full-1000)
 │   ├── test_rete_assoc.py # 8 test richiamo associativo (7 fast + 1 slow shift di classe)
 │   ├── test_fase15.py     # 11 test CL/shift + plasticita' + retrieval OOD (fast)
 │   ├── test_fase16.py     # 12 test sonno/eviction/transfer/retrieval repair (fast)
+│   ├── test_fase16b.py    # 8 test retrieval v2 (pesi, guardia 97%) + transfer v2 (fast)
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
 │   ├── test_bio_fase12.py # 3 test pipeline trend/permutazione (sintetico + matrice reale)
 │   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
@@ -89,7 +90,7 @@ Framento del veloce/
 | `stress_500.py` | stress test domande g0->gf: `genera_domande` (bump casuali + repliche ogni 25), `interroga` (catena massa/qualita'/novita'/quiete/cert/cache condivisa), `esegui` (CSV + md + 2 pannelli in `output/output_test/`) |
 | `rete_frammento.py` | rete che non distrugge: `ReteFrammento` (nucleo frozen + slot isolati + scrittura solo via gf + espandi/rifiuta), `ReteIngenuaCondivisa` (baseline P condiviso che deriva), `genera_cue` (cue indipendenti senza repliche), `esegui_test_1000` (certifica n_cert, impara n_nuove, ri-testa), `salva_report_r1000` (CSV + md + fig11); richiamo associativo: `cue_parziale` (blocco/casuale + rumore), `ricostruisci_associativo` (residuo/gx), `esegui_test_associativo` (shift di classe A->B), `salva_report_assoc` (CSV + md + fig13) |
 | `fase15.py` | prove referee (Fase 15): `ReteReplay` (rehearsal con buffer FIFO), `ReteEWC` (EWC-lite in forma chiusa sul campo, analogo concettuale con decadimento online), `esegui_confronto_cl` (stessa sequenza cue, con `shift` di classe) + `sweep_pareto_cl`/`salva_report_cl` (CSV + md + fig15); `misura_plasticita`/`salva_report_plasticita` (tasso cert, Q, ms/ricordo, memoria, fig16); retrieval OOD: `seleziona_prior` (MSE sul visibile) + `test_ood_mix_retrieval`/`test_ood_rumore_retrieval`/`salva_report_ood` (CSV + md + fig17) |
-| `fase16.py` | Fase 16 (sonno + dimenticare + transfer + repair): `sonno`/`distilla_gist` (gist = media Fx, slot intatti) + `valuta_sonno_mix`/`rumore`/`salva_report_sonno` (fig18); `evici_slot` (eta/q/uso) + `esegui_eviction_study`/`salva_report_eviction` (fig19); `misura_transfer` (BWT/FWT a 2 task) + `salva_report_transfer` (fig20); `seleziona_prior_validato` (fit->val) + `seleziona_prior_coarse_to_fine` + `valuta_retrieval_repair`/`salva_report_retrieval` (fig21) |
+| `fase16.py` | Fase 16 (sonno + dimenticare + transfer + repair): `sonno`/`distilla_gist` (gist = media Fx, slot intatti) + `valuta_sonno_mix`/`rumore`/`salva_report_sonno` (fig18); `evici_slot` (eta/q/uso) + `esegui_eviction_study`/`salva_report_eviction` (fig19); `misura_transfer` (BWT/FWT a 2 task) + `salva_report_transfer` (fig20); `seleziona_prior_validato` (fit->val) + `seleziona_prior_coarse_to_fine` + `valuta_retrieval_repair`/`salva_report_retrieval` (fig21); 16-bis: `pesi_varianza` + `seleziona_prior_v2` (MSE pesata, blur scartato) + `valuta_retrieval_v2`/`salva_report_retrieval_v2` (fig22); `fedelta_protetta`/`fedelta_condivisa` + `misura_transfer_v2` (BWT_fid + FWT zero-shot) + `salva_report_transfer_v2` (fig23) |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -338,6 +339,9 @@ python -m pytest tests/test_fase15.py -q
 # solo Fase 16 sonno/eviction/transfer/repair (12 fast, ~8 s, N=16, report in tmp dir)
 python -m pytest tests/test_fase16.py -q
 
+# solo Fase 16-bis retrieval v2 + transfer v2 (8 fast, ~3 s, N=16, report in tmp dir)
+python -m pytest tests/test_fase16b.py -q
+
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
 
@@ -362,9 +366,10 @@ EWC tarato che riduce, replay con buffer grande meglio del FIFO corto),
 plasticita' lineare + rifiuta/copertura, retrieval esatto in-distribution
 e fragile al rumore + mix che recupera il lato giusto agli estremi,
 sonno che non tocca gli slot + eviction misurata + BWT/FWT + retrieval
-in validazione fit->val.
-Totale **108 test**
-(102 fast + 6 slow), coverage **83%** sul full run
+in validazione fit->val + retrieval v2 pesato (exact-match garantito sul
+pulito) + BWT su fedelta' + FWT zero-shot.
+Totale **116 test**
+(110 fast + 6 slow), coverage **84%** sul full run
 (`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
 `frammento_gf.py` 73%, `rete_frammento.py` 69%, `fase15.py` 85%,
 `fase16.py` 97%,
@@ -672,6 +677,25 @@ from src.fase16 import valuta_retrieval_repair
 s = sonno(rete)  # {"gist": ..., "intatto": True, ...}
 print(s["intatto"], s["dettagli"]["std_pixel"])
 ```
+
+### 5.12 Fase 16-bis — retrieval v2 + transfer v2
+
+```bash
+# Scelta pesata + BWT su fedelta' + FWT zero-shot (N=16, ~2 min)
+python -m src fase16b --n-cert 30 --n-nuove 60 --N 16 --T 0.05 --seed 7
+```
+
+Due corsie rigide ("per il 3% non perdere il 97%"): il 3% discriminante
+decide solo l'id (`pesi_varianza` + `seleziona_prior_v2`, MSE pesata dove
+i ricordi differiscono), la ricostruzione resta a campo intero col prior
+certificato e cue originali. La sfocatura e' stata provata e scartata (a
+N=16 il bump e' largo ~0.8 pixel: la media 3x3 cancella il segnale; sul
+cue parziale trascina gli zeri del buco nei visibili). Transfer v2:
+`fedelta_protetta`/`fedelta_condivisa` (distanza dal certificato, non
+dall'essenza) + `misura_transfer_v2` con FWT zero-shot su B mai viste.
+Output in `output/output_test/`: `fase16b_retrieval_v2.csv/.md` +
+`fig22_retrieval_v2.png`, `fase16b_transfer_v2.csv/.md` +
+`fig23_transfer_v2.png`.
 
 ---
 
@@ -992,6 +1016,45 @@ parte il 20% del visibile toglie potere discriminante dove i campi sono
 non aggiunge). Il retrieval resta fragile. Dati e figura versionati
 (`fase16_retrieval.csv/.md`, `fig21_retrieval.png`).
 
+### 6.17 Retrieval v2 — pesi di varianza (`N=16`, seed 7, 8 cue)
+
+Scelta = MSE pesata dove i ricordi differiscono; ricostruzione invariata
+a campo intero. Niente blur (provato e scartato: a N=16 il bump e' largo
+~0.8 pixel, la media 3x3 cancella il segnale; sul cue parziale trascina
+gli zeri del buco nei visibili al bordo).
+
+| rumore | acc base | acc v2 | q base | q v2 | fraz gist |
+|---|---|---|---|---|---|
+| 0.00 | 1.000 | 1.000 | 0.8418 | 0.8418 | 0.00 |
+| 0.50 | 0.250 | 0.375 | 0.8105 | 0.8230 | 0.50 |
+| 1.00 | 0.125 | 0.375 | 0.7303 | 0.7409 | 0.50 |
+| 2.00 | 0.125 | 0.375 | 0.5262 | 0.5326 | 0.62 |
+
+Doppio criterio passato: exact-match intatto sul pulito (score 0 per
+costruzione) + accuracy triplicata al rumore forte + guardia di qualita'
+q_v2 >= q_base ovunque. Il 97% non e' stato perso per inseguire il 3%.
+Resta fragile in assoluto (0.375), ma la direzione e' quella giusta. Dati
+e figura versionati (`fase16b_retrieval_v2.csv/.md`, `fig22_retrieval_v2.png`).
+
+### 6.18 Transfer v2 — fedelta' + zero-shot (`N=16`, seed 7, A=30 + B=60)
+
+BWT su fedelta'-al-certificato (non media-Q) + FWT zero-shot su B mai viste
+con modello addestrato solo su A.
+
+| modello | F_AA | F_AB | BWT_fid | BWT_Q | FWT_zero |
+|---|---|---|---|---|---|
+| protetta | 1.0000 | 1.0000 | 0.0000 | 0.0000 | 0.8440 |
+| ingenua | 0.9553 | 0.8974 | -0.0579 | +0.0041 | 0.8415 |
+| replay K10 B200 | 0.9670 | 0.9194 | -0.0476 | +0.0065 | 0.8458 |
+| ewc lam=0.5 | 0.9871 | 0.9519 | -0.0351 | +0.0044 | 0.8561 |
+
+Lettura a due facce: sul backward la protetta e' l'unica a 0 esatto mentre
+le condivise dimenticano davvero (-0.035/-0.058, EWC la migliore); BWT_Q
+~0 conferma che la media-Q non vede nulla. Sul forward e' quasi parita'
+(0.842-0.856, EWC un soffio sopra): l'isolamento non paga quasi niente in
+generalizzazione. Il trade-off e' tutto nel backward. Dati e figura
+versionati (`fase16b_transfer_v2.csv/.md`, `fig23_transfer_v2.png`).
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
@@ -1062,6 +1125,15 @@ non aggiunge). Il retrieval resta fragile. Dati e figura versionati
 - **Fase 16 (retrieval)**: validazione fit->val raddoppia al rumore forte
   ma dimezza sul pulito; coarse-to-fine non aggiunge. Retrieval ancora
   fragile — negativo onesto.
+- **Fase 16-bis (retrieval v2)**: MSE pesata sulla varianza inter-slot
+  (niente blur: provato e scartato, cancella il bump sub-pixel a N=16 e
+  inquina i bordi del buco). Exact-match intatto sul pulito + accuracy
+  triplicata al rumore forte + guardia q mai scesa. Resta fragile in
+  assoluto (0.375): direzione giusta, non soluzione.
+- **Fase 16-bis (transfer v2)**: BWT su fedelta'-al-certificato separa
+  (protetta 0, ingenua -0.058, EWC -0.035); BWT_Q ~0 conferma la cecita'
+  della media-Q. FWT zero-shot quasi pari (0.842-0.856): l'isolamento non
+  paga in generalizzazione, il trade-off e' tutto nel backward.
 
 ---
 
