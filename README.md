@@ -1,7 +1,7 @@
 # Frammento del Veloce
 
-![coverage](https://img.shields.io/badge/coverage-84%25-brightgreen)
-![tests](https://img.shields.io/badge/tests-116_passed-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-127_passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.13-blue)
 ![CI](https://github.com/fra150/Frammento-del-veloce/actions/workflows/ci.yml/badge.svg)
 
@@ -47,30 +47,32 @@ Preprint PDF: `Frammento_del_veloce_IT.pdf`.
 Framento del veloce/
 ├── src/
 │   ├── __init__.py        # export unificati Param / Params + gf + bio
-│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | fase15 | fase16 | fase16b | all
+│   ├── __main__.py        # CLI: 2d | 1d | demo | sweep | ablazione | gf | stress500 | rete1000 | assoc | fase15 | fase16 | fase16b | fase17 | all
 │   ├── frammento_2d.py    # modello 2D toroidale (codice principale)
 │   ├── frammento_1d.py    # simulatore 1D di riferimento
 │   ├── frammento_gf.py    # livello gf: quiete + certificazione + memoria
 │   ├── rete_frammento.py  # rete che non distrugge: nucleo frozen + slot + test 1000 + richiamo associativo
 │   ├── fase15.py          # prove referee: baseline CL (Replay/EWC-lite) + plasticita' + retrieval OOD
 │   ├── fase16.py          # sonno (gist) + eviction + transfer BWT/FWT + retrieval repair
+│   ├── fase17.py          # stress fuori regime: tempi lunghi + griglie + D-zero + cue non gaussiani + dati naturali
 │   ├── confronto_bio.py   # coerenza LFP/theta-gamma + confronto spettrale onesto
 │   ├── stress_500.py      # stress test N domande g0->gf + figure
 │   ├── demo_figure.py     # genera le 7 figure del preprint
 │   └── studi.py           # sweep parametri + ablazione (CSV, md, fig08)
-├── tests/                 # 116 test (110 fast + 6 slow con --run-slow)
+├── tests/                 # 127 test (121 fast + 6 slow con --run-slow)
 │   ├── test_gf.py         # 7 test quiete/certificazione/cache/correzione
 │   ├── test_rete_1000.py  # 9 test rete che non distrugge (8 fast + 1 slow full-1000)
 │   ├── test_rete_assoc.py # 8 test richiamo associativo (7 fast + 1 slow shift di classe)
 │   ├── test_fase15.py     # 11 test CL/shift + plasticita' + retrieval OOD (fast)
 │   ├── test_fase16.py     # 12 test sonno/eviction/transfer/retrieval repair (fast)
 │   ├── test_fase16b.py    # 8 test retrieval v2 (pesi, guardia 97%) + transfer v2 (fast)
+│   ├── test_fase17.py     # 11 test stress fuori regime (dt fallback, 5 assi, report in tmp)
 │   ├── test_confronto_bio.py  # 8 test coerenza LFP/PAC/confronto onesto
 │   ├── test_bio_fase12.py # 3 test pipeline trend/permutazione (sintetico + matrice reale)
 │   ├── test_stress_500.py # 3 test catena g0->gf + replica cache
 │   └── ...
 ├── output/                # PNG/CSV/md generati (ignorati, TRANNE output_test versionato)
-│   └── output_test/       # stress 500 + rete 1000 + assoc + fase15 + fase16: CSV + pannelli + md (push su GitHub)
+│   └── output_test/       # stress 500 + rete 1000 + assoc + fase15 + fase16 + fase17: CSV + pannelli + md (push su GitHub)
 ├── .github/workflows/     # CI GitHub Actions (test + coverage)
 ├── run.py                 # avvio rapido: python run.py [all]
 ├── pyproject.toml         # marker slow + config coverage
@@ -91,6 +93,7 @@ Framento del veloce/
 | `rete_frammento.py` | rete che non distrugge: `ReteFrammento` (nucleo frozen + slot isolati + scrittura solo via gf + espandi/rifiuta), `ReteIngenuaCondivisa` (baseline P condiviso che deriva), `genera_cue` (cue indipendenti senza repliche), `esegui_test_1000` (certifica n_cert, impara n_nuove, ri-testa), `salva_report_r1000` (CSV + md + fig11); richiamo associativo: `cue_parziale` (blocco/casuale + rumore), `ricostruisci_associativo` (residuo/gx), `esegui_test_associativo` (shift di classe A->B), `salva_report_assoc` (CSV + md + fig13) |
 | `fase15.py` | prove referee (Fase 15): `ReteReplay` (rehearsal con buffer FIFO), `ReteEWC` (EWC-lite in forma chiusa sul campo, analogo concettuale con decadimento online), `esegui_confronto_cl` (stessa sequenza cue, con `shift` di classe) + `sweep_pareto_cl`/`salva_report_cl` (CSV + md + fig15); `misura_plasticita`/`salva_report_plasticita` (tasso cert, Q, ms/ricordo, memoria, fig16); retrieval OOD: `seleziona_prior` (MSE sul visibile) + `test_ood_mix_retrieval`/`test_ood_rumore_retrieval`/`salva_report_ood` (CSV + md + fig17) |
 | `fase16.py` | Fase 16 (sonno + dimenticare + transfer + repair): `sonno`/`distilla_gist` (gist = media Fx, slot intatti) + `valuta_sonno_mix`/`rumore`/`salva_report_sonno` (fig18); `evici_slot` (eta/q/uso) + `esegui_eviction_study`/`salva_report_eviction` (fig19); `misura_transfer` (BWT/FWT a 2 task) + `salva_report_transfer` (fig20); `seleziona_prior_validato` (fit->val) + `seleziona_prior_coarse_to_fine` + `valuta_retrieval_repair`/`salva_report_retrieval` (fig21); 16-bis: `pesi_varianza` + `seleziona_prior_v2` (MSE pesata, blur scartato) + `valuta_retrieval_v2`/`salva_report_retrieval_v2` (fig22); `fedelta_protetta`/`fedelta_condivisa` + `misura_transfer_v2` (BWT_fid + FWT zero-shot) + `salva_report_transfer_v2` (fig23) |
+| `fase17.py` | Fase 17 (stress fuori regime, solo misura): `dt_sicuro` (fallback reattivo con D=0) + `valuta_tempi_lunghi`/`salva_report_tempi` (T=0.5/1/2/5, fig24); `valuta_griglie`/`salva_report_griglie` (N fino a 512, Turing solo N<=64, sonda rete, fig25); `valuta_diffusione`/`salva_report_diffusione` (D0/Dx/Dy=0 o 0.001 + ruvidezza, fig26); `valuta_cue_nonstrutturati`/`salva_report_cue` (multi-bump/sparso/random/striscia/checker + sonda associativa, fig27); `campo_naturale` + `valuta_reali`/`salva_report_reali` (6 campi massa-1 + retrieval nearest-MSE, fig28); `esegui_tutti` |
 | `demo_figure.py` | `fig_tre_livelli`, `fig_evoluzione`, `fig_diagnostica`, `fig_metriche`, `fig_turing`, `fig_invariante`, `fig_lfp` |
 | `studi.py` | `valuta`, `valuta_multiseed` (media ± std), `tempo_recupero` (twin experiment), `config_sweep`, `config_ablazione`, `main_sweep`, `main_sweep_multiseed`, `main_ablazione`, `main_ablazione_multiseed`, `fig_ablazione` |
 
@@ -342,6 +345,9 @@ python -m pytest tests/test_fase16.py -q
 # solo Fase 16-bis retrieval v2 + transfer v2 (8 fast, ~3 s, N=16, report in tmp dir)
 python -m pytest tests/test_fase16b.py -q
 
+# solo Fase 17 stress fuori regime (11 fast, ~11 s, N=16, report in tmp dir)
+python -m pytest tests/test_fase17.py -q
+
 # con coverage (XML in output/coverage.xml)
 python -m pytest tests/ -q --run-slow --cov=src --cov-report=term-missing
 
@@ -368,11 +374,11 @@ e fragile al rumore + mix che recupera il lato giusto agli estremi,
 sonno che non tocca gli slot + eviction misurata + BWT/FWT + retrieval
 in validazione fit->val + retrieval v2 pesato (exact-match garantito sul
 pulito) + BWT su fedelta' + FWT zero-shot.
-Totale **116 test**
-(110 fast + 6 slow), coverage **84%** sul full run
+Totale **127 test**
+(121 fast + 6 slow), coverage **85%** sul full run
 (`confronto_bio.py` 90%, `studi.py` 97%, `frammento_2d.py` 94%,
-`frammento_gf.py` 73%, `rete_frammento.py` 69%, `fase15.py` 85%,
-`fase16.py` 97%,
+`frammento_gf.py` 74%, `rete_frammento.py` 69%, `fase15.py` 85%,
+`fase16.py` 97%, `fase17.py` 91%,
 `stress_500.py` 34% — gli script full girano fuori CI).
 
 ---
@@ -696,6 +702,40 @@ dall'essenza) + `misura_transfer_v2` con FWT zero-shot su B mai viste.
 Output in `output/output_test/`: `fase16b_retrieval_v2.csv/.md` +
 `fig22_retrieval_v2.png`, `fase16b_transfer_v2.csv/.md` +
 `fig23_transfer_v2.png`.
+
+### 5.13 Fase 17 — stress fuori regime (solo misura)
+
+```bash
+# un asse alla volta (default leggeri, seed 7)
+python -m src fase17 --asse tempi                          # N=48, T=0.5/1/2/5
+python -m src fase17 --asse griglie                        # N=32/64/128/256, T=0.05
+python -m src fase17 --asse diffusione                     # N=32, T=0.10
+python -m src fase17 --asse cue                             # N=32, 5 tipi x 8 cue
+python -m src fase17 --asse reali                           # N=32, 6 campi naturali
+
+# tutto (senza N=512) oppure tutto con N=512 (~9 min solo per N=512)
+python -m src fase17 --asse tutti
+python -m src fase17 --asse griglie --include-512
+```
+
+Cinque sonde senza teoria nuova: tempi lunghi (dV, drift g0, eq/ea,
+Q, rnov); griglie enormi (CFL, Turing solo N<=64 per dt fisso,
+gate gf, memoria lineare con sonda rete a 3 cue); diffusione
+azzerata/ridotta (`dt_sicuro`: fallback 5e-4 con D=0, cap 2e-3,
+mai nel core); cue non gaussiani (multi-bump, sparsi, random,
+striscia, checker + sonda associativa blocco 0.5); campi naturali a
+massa 1 (gradiente, barre, chirp, ripple, multiscala, eeg-sintetico
++ retrieval nearest-MSE sui certificati). Output in
+`output/output_test/`: `fase17_tempi/cue/diffusione/griglie/
+reali.csv/.md` + `fig24-28.png`.
+
+Uso da codice:
+
+```python
+from src.fase17 import valuta_tempi_lunghi, salva_report_tempi
+righe = valuta_tempi_lunghi(N=48, T_list=(0.5, 1.0, 2.0, 5.0), seed=7)
+salva_report_tempi(righe, N=48, seed=7)
+```
 
 ---
 
@@ -1055,6 +1095,98 @@ le condivise dimenticano davvero (-0.035/-0.058, EWC la migliore); BWT_Q
 generalizzazione. Il trade-off e' tutto nel backward. Dati e figura
 versionati (`fase16b_transfer_v2.csv/.md`, `fig23_transfer_v2.png`).
 
+### 6.19 Tempi lunghi (`N=48`, deterministico, seed 7)
+
+Una run per T. La certificazione e' di corto orizzonte: a T=0.5 Q
+e' gia' 0.113 (eq oltre soglia), oltre T=1 Q~0.02 con Fo quasi
+piatta (ea~0.94). Massa sempre esatta; a T=5 la V driven oscilla
+(dV<=0 al 67%: la monotonia era di regime breve).
+
+| T | dV<=0 | V0->Vfine | drift g0 | eq | ea | Q | rnov | quiete | cert |
+|---|---|---|---|---|---|---|---|---|---|
+| 0.50 | 1.000 | 4.094->0.249 | 0.0e+00 | 0.653 | 0.872 | 0.113 | 0.005 | NO | NO |
+| 1.00 | 1.000 | 4.094->0.202 | 0.0e+00 | 0.789 | 0.924 | 0.033 | 0.005 | NO | NO |
+| 2.00 | 0.869 | 4.094->0.199 | 0.0e+00 | 0.814 | 0.943 | 0.021 | 0.007 | NO | NO |
+| 5.00 | 0.669 | 4.094->0.199 | -2.2e-16 | 0.814 | 0.945 | 0.019 | 0.013 | NO | NO |
+
+Dati e figura versionati (`fase17_tempi.csv/.md`, `fig24_tempi.png`).
+
+### 6.20 Griglie enormi (`T=0.05`, deterministico, seed 7)
+
+Q inchiodata (~0.762) da N=32 a N=512, sempre certificato, dV 100%,
+drift ~1e-16. Costo ~N^4 confermato (0.4 s a N=128, 8 s a N=256,
+~11 min a N=512); memoria lineare 32 KB -> 8 MB per slot; sonda
+rete 3/3 fino a N=128. Turing solo N<=64 (dt fisso 2.5e-4
+instabile oltre: limite dichiarato, non nascosto).
+
+| N | dt | passi | wall s | dV<=0 | drift g0 | Q | cert | mem/slot | sonda |
+|---|---|---|---|---|---|---|---|---|---|
+| 32 | 2.0e-03 | 25 | 0.0 | 1.000 | 0.0e+00 | 0.768 | SI | 32 KB | 1.00 |
+| 64 | 4.9e-04 | 102 | 0.1 | 1.000 | -1.1e-16 | 0.763 | SI | 128 KB | 1.00 |
+| 128 | 1.2e-04 | 409 | 0.4 | 1.000 | 0.0e+00 | 0.762 | SI | 512 KB | 1.00 |
+| 256 | 3.1e-05 | 1638 | 8.3 | 1.000 | 1.1e-16 | 0.762 | SI | 2048 KB | n/d |
+| 512 | 7.6e-06 | 6553 | 665.5 | 1.000 | 2.2e-16 | 0.762 | SI | 8192 KB | n/d |
+
+Dati e figura versionati (`fase17_griglie.csv/.md`, `fig25_griglie.png`).
+
+### 6.21 Diffusione zero/ridotta (`N=32`, `T=0.10`, seed 7)
+
+Senza diffusione la qualita' *sale* (tutto-zero 0.749 > base 0.593)
+ma il gate boccia: Dx=0 per eq (0.641), D0=0/tutto-zero/quasi-zero
+per V non monotona (0.020/0.005/0.500). Dy=0 e' identica al base
+(SI: la diffusione di gy e' irrilevante in regime deterministico).
+Lettura: diffusione conveniente per Q, gate essenziale per gli stati
+"buoni ma non quieti". `ruvidezza` = media |lap(Fx)| finale.
+
+| config | D0/Dx/Dy | Q | eq | rnov | cert | ruvidezza |
+|---|---|---|---|---|---|---|
+| base | 0.050/0.010/0.002 | 0.593 | 0.389 | 0.006 | SI | 158.74 |
+| D0=0 | 0.000/0.010/0.002 | 0.608 | 0.392 | 0.006 | NO | 164.87 |
+| Dx=0 | 0.050/0.000/0.002 | 0.732 | 0.641 | 0.006 | NO | 227.41 |
+| Dy=0 | 0.050/0.010/0.000 | 0.593 | 0.389 | 0.007 | SI | 158.74 |
+| tutto-zero | 0.000/0.000/0.000 | 0.749 | 0.251 | 0.007 | NO | 236.41 |
+| quasi-zero | 0.001/0.001/0.001 | 0.732 | 0.252 | 0.006 | NO | 225.83 |
+
+Dati e figura versionati (`fase17_diffusione.csv/.md`,
+`fig26_diffusione.png`).
+
+### 6.22 Cue non strutturati (`N=32`, `T=0.10`, seed 7, 8 per tipo)
+
+Pattern locali passano (multi-bump/sparso/random 100% cert,
+Q~0.55-0.60, qmask~0.67-0.70 con blocco 0.5); pattern distribuiti
+bocciano (striscia Q negativa eq 1.84; checker Q 0.455 ma eq 0.836).
+Il modello tollera il disordine locale, non quello globale.
+
+| tipo | tasso cert | Q media (min) | eq | gate | rnov | qmask |
+|---|---|---|---|---|---|---|
+| multi-bump | 1.00 | 0.596 (0.585) | 0.386 | 0.061 | 0.006 | 0.665 |
+| sparso | 1.00 | 0.555 (0.520) | 0.497 | 0.070 | 0.006 | 0.671 |
+| random | 1.00 | 0.578 (0.571) | 0.364 | 0.067 | 0.006 | 0.695 |
+| striscia | 0.00 | -0.067 (-0.317) | 1.839 | 0.082 | 0.006 | n/d |
+| checker | 0.00 | 0.455 (0.455) | 0.836 | 0.093 | 0.006 | n/d |
+
+Dati e figura versionati (`fase17_cue.csv/.md`, `fig27_cue.png`).
+
+### 6.23 Dati naturali (stand-in a massa 1, `N=32`, seed 7)
+
+Negativo onesto: 0/6 certificati (Q~0.07-0.10, eq~0.8), retrieval
+vacuo. Un campo a pieno dominio e' troppo lontano dall'essenza
+localizzata: i dati veri vanno embedded come perturbazione
+dell'essenza, non caricati come campo intero. EEG veri restano il
+pilota nullo di Fase 12.
+
+| campo | cert | Q | eq | rnov |
+|---|---|---|---|---|
+| gradiente | NO | 0.074 | 0.804 | 0.006 |
+| barre | NO | 0.079 | 0.789 | 0.006 |
+| chirp | NO | 0.077 | 0.794 | 0.006 |
+| ripple | NO | 0.077 | 0.789 | 0.006 |
+| multiscala | NO | 0.098 | 0.745 | 0.006 |
+| eeg-sintetico | NO | 0.079 | 0.787 | 0.006 |
+
+Retrieval nearest-MSE sui certificati: 0/6 candidati, acc 0. Dati e
+figura versionati (`fase17_reali.csv/.md`, `fig28_reali.png`).
+
 ## 7. Limiti e natura del modello
 
 - **Teorico-computazionale**, non validato su dati biologici (nessun
@@ -1078,8 +1210,11 @@ versionati (`fase16b_transfer_v2.csv/.md`, `fig23_transfer_v2.png`).
 - **Recupero**: con `T_rec = 1.00` (scala `~3/(alpha+kappa_x)`) il twin
   recupera al 100% (0.49 base, 0.24 con α=8); senza accoppiamento
   (solo diffusione) non recupera entro la finestra.
-- **Orizzonte breve**: sweep/ablazione a `T=0.15`; comportamenti su tempi
-  lunghi e pattern di Turing completi restano da esplorare.
+- **Orizzonte breve**: sweep/ablazione/rete a `T<=0.30`; la Fase 17
+  (§6.19) mostra che oltre T=0.5 la certificazione cade (Fo piatta,
+  eq oltre soglia) e a T=5 la V driven oscilla (dV<=0 al 67%) —
+  la monotonia di Lyapunov era di regime breve. Pattern di Turing
+  completi oltre N=64 restano da esplorare (dt fisso instabile).
 - **gf**: soglie tarate sul regime sano (`eps=0.60`, `delta=0.90`,
   `soglia_qualita=0.40`), non principi primi — con `Fo` che diffonde,
   soglie strette renderebbero la quiete impossibile per disegno. "Costo
@@ -1134,6 +1269,21 @@ versionati (`fase16b_transfer_v2.csv/.md`, `fig23_transfer_v2.png`).
   (protetta 0, ingenua -0.058, EWC -0.035); BWT_Q ~0 conferma la cecita'
   della media-Q. FWT zero-shot quasi pari (0.842-0.856): l'isolamento non
   paga in generalizzazione, il trade-off e' tutto nel backward.
+- **Fase 17 (tempi)**: seed singolo, protocollo stimolo (periodi
+  0.30/0.45: a T>>0.45 la media e' su molti cicli); la caduta di Q
+  oltre T=0.5 vale per lo stimolo continuo, non per il rilassamento.
+- **Fase 17 (griglie)**: seed singolo; costo ~N^4 misurato (N=512 =
+  665 s per run); sonda rete solo N<=128; Turing oltre N=64 non
+  valutato per scelta onesta (dt fisso fuori stabilita').
+- **Fase 17 (diffusione)**: con D=0 il dt e' un fallback reattivo
+  (5e-4, mai nel core) — i confronti con la base usano quindi passi
+  diversi; la bocciatura per V non monotona con F0 congelata e'
+  attesa (parte costante in V + forzante mobile).
+- **Fase 17 (cue/reali)**: pattern sintetici a energia comparabile al
+  bump (non esaustivi); i campi naturali sono stand-in (mapping
+  arbitrario) e il retrieval e' vacuo senza certificati — servono
+  embedding come perturbazione + PNG/WAV/CSV veri nello stesso
+  formato (array >=0, massa 1, lato N).
 
 ---
 
