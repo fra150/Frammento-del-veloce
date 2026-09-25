@@ -1,0 +1,9 @@
+sezione,campo_rumore,tasso_cert_acc,Q,eq,rnov,qmask
+cert,gradiente,0,0.0740,0.8040,0.0062,
+cert,barre,0,0.0788,0.7889,0.0061,
+cert,chirp,0,0.0766,0.7943,0.0060,
+cert,ripple,0,0.0774,0.7878,0.0062,
+cert,multiscala,0,0.0806,0.7774,0.0059,
+cert,eeg-sintetico,0,0.0794,0.7869,0.0060,
+retrieval,0.0,0.000,,,,0.0000
+retrieval,0.5,0.000,,,,0.0000

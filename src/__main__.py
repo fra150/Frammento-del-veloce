@@ -264,6 +264,45 @@ def build_parser():
                                 N=args.N, T=args.T, seed=args.seed)
         salva_report_transfer_v2(tr, out_dir=out)
 
+    def cmd_fase17(args):
+        from .fase17 import (valuta_tempi_lunghi, salva_report_tempi,
+                             valuta_griglie, salva_report_griglie,
+                             valuta_diffusione, salva_report_diffusione,
+                             valuta_cue_nonstrutturati, salva_report_cue,
+                             valuta_reali, salva_report_reali)
+        out = args.out or None
+        assi = args.asse
+        if assi in ("tempi", "tutti"):
+            r = valuta_tempi_lunghi(N=args.N, seed=args.seed)
+            salva_report_tempi(r, out_dir=out, N=args.N, seed=args.seed)
+        if assi in ("griglie", "tutti"):
+            nl = [32, 64, 128, 256] + ([512] if args.include_512 else [])
+            r = valuta_griglie(N_list=nl, T=0.05, seed=args.seed)
+            salva_report_griglie(r, out_dir=out, T=0.05, seed=args.seed)
+        if assi in ("diffusione", "tutti"):
+            r = valuta_diffusione(N=32, T=0.10, seed=args.seed)
+            salva_report_diffusione(r, out_dir=out, N=32, T=0.10,
+                                    seed=args.seed)
+        if assi in ("cue", "tutti"):
+            r = valuta_cue_nonstrutturati(N=32, T=0.10, seed=args.seed)
+            salva_report_cue(r, out_dir=out, N=32, T=0.10, seed=args.seed)
+        if assi in ("reali", "tutti"):
+            r = valuta_reali(N=32, T=0.10, seed=args.seed)
+            salva_report_reali(r, out_dir=out, N=32, T=0.10, seed=args.seed)
+
+    aF17 = sub.add_parser("fase17", help="Stress fuori regime: tempi/griglie/D-zero/cue/reali")
+    aF17.add_argument("--asse", default="tutti",
+                      choices=["tutti", "tempi", "griglie", "diffusione",
+                               "cue", "reali"])
+    aF17.add_argument("--N", type=int, default=48,
+                      help="N per l'asse tempi (gli altri usano N fissi "
+                           "documentati)")
+    aF17.add_argument("--seed", type=int, default=7)
+    aF17.add_argument("--include-512", action="store_true",
+                      help="include N=512 nelle griglie (costoso)")
+    aF17.add_argument("--out", type=str, default="")
+    aF17.set_defaults(func=cmd_fase17)
+
     aF16b = sub.add_parser("fase16b", help="Retrieval v2 (pesi) + transfer v2 (fedelta'/zero-shot)")
     aF16b.add_argument("--n-cert", type=int, default=30)
     aF16b.add_argument("--n-nuove", type=int, default=60)
